@@ -15,7 +15,7 @@ class PhysicsOptimizer:
                            'LELBOW', 'RELBOW', 'LHAND', 'RHAND', 'LFOOT', 'RFOOT'
                            ]  # 'LANKLE', 'RANKLE', 'NECK', 'LWRIST', 'RWRIST', 'LCLAVICLE', 'RCLAVICLE'
 
-    def __init__(self, debug=False):
+    def __init__(self, debug=True):
         mu = 0.6
         supp_poly_size = 0.2
         self.debug = debug
@@ -49,17 +49,24 @@ class PhysicsOptimizer:
         self.q = None
         self.qdot = np.zeros(self.model.qdot_size)
 
-    def optimize_frame(self, pose, jvel, contact, acc):
+    def optimize_frame(self, pose, jvel, contact, acc, return_grf=False):
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
         v_ref = jvel.numpy()
         c_ref = contact.sigmoid().numpy()
         a_ref = acc.numpy()
         q = self.q
         qdot = self.qdot
+        
 
         if q is None:
             self.q = q_ref
+            if return_grf:
+                return pose, torch.zeros(3), [], None
+            else:
+          
+                return pose, torch.zeros(3)
             return pose, torch.zeros(3)
+            
 
         # determine the contact joints and points
         self.model.update_kinematics(q, qdot, np.zeros(self.model.qdot_size))
@@ -201,12 +208,7 @@ class PhysicsOptimizer:
 
         # GRF friction cone constraint
         if True:
-            if nc > 0:
-                Gs2.append(art.math.block_diagonal_matrix_np([self.friction_constraint_matrix] * nc))
-                hs2.append(np.zeros(nc * 4))
-
-        # equation of motion (equality constraint)
-        if True:
+            if nc > 0:False
             M = self.model.calc_M(q)
             h = self.model.calc_h(q, qdot)
             A_ = np.hstack((-M, Js.T, np.eye(self.model.qdot_size)))
@@ -249,4 +251,10 @@ class PhysicsOptimizer:
         pose_opt, tran_opt = rbdl_to_smpl(q)
         pose_opt = torch.from_numpy(pose_opt).float()[0]
         tran_opt = torch.from_numpy(tran_opt).float()[0]
+        if not return_grf:
+            return pose_opt, tran_opt
+        else:
+            cj = [vars(art.SMPLJoint)[_].value for _ in collision_joints]
+            grf = torch.from_numpy(GRF).float().view(-1, 4, 3).sum(dim=1) if len(cj) > 0 else None
+            return pose_opt, tran_opt, cj, grf
         return pose_opt, tran_opt

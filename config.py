@@ -15,21 +15,24 @@ class paths:
     amass_dir = 'data/dataset_work/AMASS'         # output path for the synthetic AMASS dataset
 
     raw_dipimu_dir = 'data/dataset_raw/DIP_IMU'   # raw DIP-IMU dataset path (raw_dipimu_dir/s_01/*.pkl)
-    dipimu_dir = 'data/dataset_work/DIP_IMU'      # output path for the preprocessed DIP-IMU dataset
+    dipimu_dir = 'data/dataset_work/IPOP'      # output path for the preprocessed DIP-IMU dataset
 
     # DIP recalculates the SMPL poses for TotalCapture dataset. You should acquire the pose data from the DIP authors.
-    raw_totalcapture_dip_dir = 'data/dataset_raw/TotalCapture/DIP_recalculate'  # contain ground-truth SMPL pose (*.pkl)
+    raw_totalcapture_dip_dir = 'data/dataset_raw/TotalCapture_Real_60FPS'  # contain ground-truth SMPL pose (*.pkl)
     raw_totalcapture_official_dir = 'data/dataset_raw/TotalCapture/official'    # contain official gt (S1/acting1/gt_skel_gbl_pos.txt)
     totalcapture_dir = 'data/dataset_work/TotalCapture'          # output path for the preprocessed TotalCapture dataset
 
     result_dir = 'data/result'                      # output directory for the evaluation results
+    temp_dir = 'data/temp'                          # temp directory
+    live_record_dir = 'data/record' 
 
     smpl_file = 'models/SMPL_male.pkl'              # official SMPL model path
     physics_model_file = 'models/physics.urdf'      # physics body model path
     plane_file = 'models/plane.urdf'                # (for debug) path to plane.urdf    Please put plane.obj next to it.
     weights_file = 'data/weights.pt'                # network weight file
     physics_parameter_file = 'physics_parameters.json'   # physics hyperparameters
-
+    
+    unity_file = ''
 
 class joint_set:
     leaf = [7, 8, 12, 20, 21]

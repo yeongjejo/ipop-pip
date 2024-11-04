@@ -119,7 +119,7 @@ def run_pipeline(net, data_dir, sequence_ids=None):
         torch.save(net.predict(accs[i], rots[i], init_poses[i]), os.path.join(output_dir, '%d.pt' % i))
 
 
-def evaluate(net, data_dir, sequence_ids=None, flush_cache=False, pose_evaluator=ReducedPoseEvaluator(),
+def evaluate(net, data_dir, sequence_ids=None, flush_cache=True, pose_evaluator=ReducedPoseEvaluator(),
              evaluate_pose=False, evaluate_tran=False, evaluate_zmp=False):
     r"""
     Evaluate poses and translations of `net` on all sequences in `sequence_ids` from `data_dir`.
@@ -205,4 +205,4 @@ if __name__ == '__main__':
     #evaluate(net, paths.totalcapture_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_tran=True, evaluate_zmp=True, flush_cache=False)
 
     print('\n')
-    evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=False)
+    evaluate(net, paths.dipimu_dir, pose_evaluator=reduced_pose_evaluator, evaluate_pose=True, evaluate_zmp=True, flush_cache=True)

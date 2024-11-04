@@ -293,7 +293,7 @@ if __name__ == '__main__':
         
         # tran = torch.zeros(1,3)
         
-        # print(grf)
+        # print(pose)
         
         
         # tran = torch.zeros(1,3) # 테스트용 (추후 삭제)   

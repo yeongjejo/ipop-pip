@@ -16,7 +16,7 @@ class PhysicsOptimizer:
                            ]  # 'LANKLE', 'RANKLE', 'NECK', 'LWRIST', 'RWRIST', 'LCLAVICLE', 'RCLAVICLE'
 
     def __init__(self, debug=True):
-        mu = 0.6 # 원본
+        mu = 0.6
         supp_poly_size = 0.2
         self.debug = debug
         self.model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
@@ -180,23 +180,16 @@ class PhysicsOptimizer:
 
         # contacting body joint velocity
         if True:
-            i = 0
             for joint_name in self.test_contact_joints[:-2]:
                 joint_id = vars(Body)[joint_name]
-                # print(str(i) + " name : " + str(joint_name) + "id : " + str(joint_id))
-                i += 1
                 pos = self.model.calc_body_position(q, joint_id)
                 if pos[1] <= self.params['floor_y']:
                     J = self.model.calc_point_Jacobian(q, joint_id)
                     v = self.model.calc_point_velocity(q, qdot, joint_id)
-                    # v *= 10
                     Gs1.append(-self.params['delta_t'] * J)
                     hs1.append(v - [-1e-1, 0, -1e-1])
                     Gs1.append(self.params['delta_t'] * J)
                     hs1.append(-v + [1e-1, 1e2, 1e-1])
-                    
-            
-            # print("----------------------------------------")
 
         # contacting foot velocity
         if True:
@@ -206,8 +199,7 @@ class PhysicsOptimizer:
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
 
-                # th = -np.log(min(stable, 0.84999) / 0.85) 원본 (아이팝 주석)
-                th = -np.log(min(stable, 0.98999) / 0.99)
+                th = -np.log(min(stable, 0.84999) / 0.85)
                 th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                 Gs1.append(-self.params['delta_t'] * J)
                 hs1.append(v - [-th, th_y, -th])
@@ -216,11 +208,23 @@ class PhysicsOptimizer:
 
         # GRF friction cone constraint
         if True:
-            if nc > 0:False
+            if nc > 0:
+                Gs2.append(art.math.block_diagonal_matrix_np([self.friction_constraint_matrix] * nc))
+                hs2.append(np.zeros(nc * 4))
+
+        # equation of motion (equality constraint)
+        if True:
             M = self.model.calc_M(q)
             h = self.model.calc_h(q, qdot)
             A_ = np.hstack((-M, Js.T, np.eye(self.model.qdot_size)))
             b_ = h
+            
+        # if True:
+        #     if nc > 0:False
+        #     M = self.model.calc_M(q)
+        #     h = self.model.calc_h(q, qdot)
+        #     A_ = np.hstack((-M, Js.T, np.eye(self.model.qdot_size)))
+        #     b_ = h
 
         As1, bs1, As2, bs2, As3, bs3 = np.vstack(As1), np.concatenate(bs1), np.vstack(As2), np.concatenate(bs2), np.vstack(As3), np.concatenate(bs3)
         Gs1, hs1, Gs2, hs2, Gs3, hs3 = np.vstack(Gs1), np.concatenate(hs1), np.vstack(Gs2), np.concatenate(hs2), np.vstack(Gs3), np.concatenate(hs3)

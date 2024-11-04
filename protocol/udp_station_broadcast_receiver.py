@@ -39,7 +39,7 @@ class UDPStationBroadcastReceiver(threading.Thread):
 
                 # 시리얼 번호 저장
                 serial = (data[6] << 8) | data[7]  # byte 값을 int로 변환 후 결합
-                print(data[7])
+                # print(data[7])
                 # print(f"IP 번호: {ip_num}, 시리얼: {serial}, Port6: {port6}, Port7: {port7}, 채널: {ch}")
 
                 # 포트 번호 (분할) 저장 (880 포트라고 가정)

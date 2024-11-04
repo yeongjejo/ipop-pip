@@ -3,6 +3,7 @@ from tkinter import Place
 from sensor.sensor_axis import SensorAxis
 import torch
 import articulate as art
+import math
 
 class Quaternion(SensorAxis):
     def __init__(self, w=0.0, x=0.0, y=0.0, z=0.0):
@@ -71,3 +72,15 @@ class Quaternion(SensorAxis):
         self.x = q_inv[1]
         self.y = q_inv[2]
         self.z = q_inv[3]
+        
+        
+    def norm(self):
+        if self.w == 0 or self.x == 0 or self.y == 0 or self.z == 0:
+            return 0
+        
+        
+        n_data = math.sqrt(self.w**2 + self.x**2 + self.y**2 + self.z**2)
+        self.w /= n_data
+        self.x /= n_data
+        self.y /= n_data
+        self.z /= n_data

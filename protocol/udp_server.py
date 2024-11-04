@@ -10,6 +10,8 @@ from sensor.quaternion import Quaternion
 from sensor.sensor_part import SensorPart
 from station_info import StationInfo
 
+import numpy as np
+
 
 import torch
 import math
@@ -34,17 +36,22 @@ class UDPServer(threading.Thread):
 
     def run(self):
         self._running = True
+        
 
-        port = 56775
-        # port = 55000
+        # port = 56775
+        port = 55001
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))
         station_info = StationInfo()
+        
         while self._running:
             buffer = bytearray(907)  # 수신할 데이터 사이즈 설정
             
+            # print("000000000000000000")
             # 데이터 수신
             sock.recv_into(buffer)
+            
+            # print("1111111111")
             
             # 데이터 확인
             receive_station_byte_data = buffer
@@ -60,6 +67,19 @@ class UDPServer(threading.Thread):
             # 센서 데이터 저장
             # iMotion_Parsing_(PIP packet)241016_파이썬_파싱 문서 참고
             start_byte_num = 3
+            
+            # 0이면 t-pose 진행중
+            # 1이면 동작 실행
+            # print("티포즈 데이터 확인 : " + str(receive_station_byte_data[904] & 0xFF))
+            if receive_station_byte_data[904] & 0xFF == 0:
+                DataManager().t_pose_set_end = False
+                print("Runing T-Pose...")
+                continue
+            elif DataManager().t_pose_set_end == False or DataManager().t_pose_set_end == None:
+                print("End T-Pose!!!")
+                DataManager().t_pose_set_end = True
+            
+
 
             while True:
                 # 모든센서 저장이 끝나면 종료
@@ -68,7 +88,7 @@ class UDPServer(threading.Thread):
 
                 sensor_byte_data = receive_station_byte_data[start_byte_num:start_byte_num+53] # 추출할 센서 데이터
                 start_byte_num += 53 # 다음 탐색할 센서의 바이트 시작 번호
-
+                
                 # 센서 번호 저장
                 try:
                     sensor_part = SensorPart(sensor_byte_data[0] & 0xFF)
@@ -86,6 +106,7 @@ class UDPServer(threading.Thread):
                 accX = self.cul_byte_data(sensor_byte_data[13:17])
                 accY = self.cul_byte_data(sensor_byte_data[17:21])
                 accZ = self.cul_byte_data(sensor_byte_data[21:25])
+                acc = Acc(accX, accY, accZ)
             
     
                 # 자기계 x, y, z 계산
@@ -101,77 +122,224 @@ class UDPServer(threading.Thread):
                 qY = self.cul_byte_data(sensor_byte_data[45:49])
                 qZ = self.cul_byte_data(sensor_byte_data[49:53])
                 quaternion = Quaternion(qW, qX, qY,  qZ)
+                quaternion.norm()
                 
                 
-                   
-                # accX = accX - ((-1.0)*2.0*(qX*qZ)-(qW*qY))
-                # accY = accY - ((-1.0)*2.0*(qY*qZ)-(qW*qX))
-                # accZ = accZ - (1.0-(2.0*(qW*qW)-(qZ*qZ)))
+                
+                
+                qAccX = (-1.0)*2.0*(quaternion.x*quaternion.z-quaternion.w*quaternion.y)
+                qAccY = (-1.0)*2.0*(quaternion.y*quaternion.z+quaternion.w*quaternion.x)
+                qAccZ = 1.0-2.0*(quaternion.w*quaternion.w+quaternion.z*quaternion.z)
+        
+        
+                
+                accX = accX - qAccX 
+                accY = accY - qAccY
+                accZ = accZ * -1 - qAccZ
+                
+                print(accX)
+                
+                
+                # accX *= 9.81
+                # accY *= 9.81
+                # accZ *= 9.81
+                
+                
+                accX *= 2.5
+                accY *= 2.5
+                accZ *= 2.5
+  
 
-
-                accX = accX /10 * 9.8
-                accY = accY /10 * 9.8
-                accZ = accZ/ 10 * 9.8
                 # 센서마다 축 보정
                 if sensor_part == SensorPart.WAIST:
-                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[23]
+                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[15] # 수정 해야 할수도
+                    
                     # print(f"w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
                 elif sensor_part == SensorPart.HEAD:
+                    # print(f"머리 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
+                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[15]
                     
-                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[17]
-                    
-                    # print(f"w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
                     
                 elif sensor_part == SensorPart.RIGHT_LOWER_ARM:
-                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[14]
-                    # print(f"w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
+                    # print(f"오른팔 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
+                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[31]
                     
                 elif sensor_part == SensorPart.LEFT_LOWER_ARM:
-                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[8]
-                
-                    # print(f"w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
+                    # print(f"왼팔 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
+                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[37]
+                    # 25, 31, 37
                     
                 elif sensor_part == SensorPart.LEFT_LOWER_LEG:
-                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[3]
-                    # print(f"w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
-                elif sensor_part == SensorPart.RIGHT_LOWER_LEG:
-                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[39]
-                    # print(f"w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
                     
+                    accX *= 1.25
+                    accY *= 1.25
+                    accZ *= 1.25
+                    # print(f"왼다리 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
+                    # quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[25]
+                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[15]
+                    # 25, 31, 37
+                elif sensor_part == SensorPart.RIGHT_LOWER_LEG:
+                    accX *= 1.25
+                    accY *= 1.25
+                    accZ *= 1.25
+                    # print(f"센서 가속도 x = {accZ}, 쿼터니언 가속도 x = {qAccZ}")
+                    # print(f"오른 다리 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
+                    # quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[1]
+                    quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[15]
+                    
+                quaternion.norm()
+                acc.norm()
+                
+                
+                
+                
+                                
+                # 쿼터니언 inv 보정
+                # if DataManager().get_first_sensor_data_inv(sensor_part) == 0:
+                #     if quaternion.w != 0:
+                #         quaternion.quaternion_inverse()
+                #         quaternion.norm()
+                #         DataManager().first_sensor_data_inv = [sensor_part, quaternion]
+                # else:
+                #     quaternion = DataManager().get_first_sensor_data_inv(sensor_part) * quaternion 
+                #     quaternion.norm()
+                
+                
+                
+
+                
+                
+                # 쿼터니언 축을 맞춘다
+                # 축을 맞춘 쿼터니언 각으로 쿼터니언 가속도를 구한다
+                # 쿼터니언 가속도 - 센서 가속도 = 0 이 되도록 센서 가속도에 -1 곱할지 여부를 결정한다 (가속도 축맞춤 작업)
+                
+                # 쿼터니언 가속도
+                # qAccX = (-1.0)*2.0*(quaternion.x*quaternion.z-quaternion.w*quaternion.y)
+                # qAccY = (-1.0)*2.0*(quaternion.y*quaternion.z+quaternion.w*quaternion.x)
+                # qAccZ = 1.0-2.0*(quaternion.w*quaternion.w+quaternion.z*quaternion.z)
+                
+                # accQ = Acc(qAccX, qAccY, qAccZ)
+                # accQ.norm()
+                
+                # if sensor_part == SensorPart.WAIST:
+                #     acc.x = accZ - accQ.x
+                #     acc.y = accY * -1 - accQ.y
+                #     acc.z = accX * -1 - accQ.z
+                
+                #     # print(f"보정X : {acc.x :.2f},\t 보정Y : {acc.y:.2f},\t 보정Z : {acc.z:.2f},")
+                #     # print(f"RawX : {accX:.2f},\t RawY : {accY:.2f},\t RawZ : {accZ:.2f},\t 보정X : {accQ.x:.2f},\t 보정Y : {accQ.y:.2f},\t 보정Z : {accQ.Z:.2f},")
+                    
+                # #     # acc.x = accZ
+                # #     # acc.y = accY * -1
+                # #     # acc.z = accX * -1
+                    
+                # #     # print(f"센서 가속도 x = {accX * -1}, 쿼터니언 가속도 x = {qAccZ}, 결과 {accX * -1 - qAccZ}")
+                    # print(f"센서 가속도 x = {accZ}, 쿼터니언 가속도 x = {accQ.z}")
+                # #     # print(f"센서 가속도 x ={accY}, 쿼터니언
+                # #     # 가속도 x = {qAccZ}")
+                # elif sensor_part == SensorPart.HEAD:
+                #     acc.x = accZ * -1 - qAccX
+                #     acc.y = accY - qAccY
+                #     acc.z = accX * -1 - qAccZ
+                    
+                # #     # acc.x = accZ * -1
+                # #     # acc.y = accY
+                # #     # acc.z = accX * -1
+                    
+                # #     # print(f"센서 가속도 x = {accX * -1}, 쿼터니언 가속도 x = {qAccZ}, 결과 {accZ * -1 - qAccZ}")
+                # elif sensor_part == SensorPart.RIGHT_LOWER_ARM:
+                #     acc.x = accY - qAccX
+                #     acc.y = accX * -1 - qAccY
+                #     acc.z = accZ * -1 - qAccZ
+                    
+                # #     # acc.x = accY
+                # #     # acc.y = accX * -1
+                # #     # acc.z = accZ * -1
+                    
+                # #     # print(f"센서 가속도 x = {accZ * -1}, 쿼터니언 가속도 x = {qAccZ}, 결과 {accZ * -1 - qAccZ}")
+                # elif sensor_part == SensorPart.LEFT_LOWER_ARM:
+                #     acc.x = accY * -1 - qAccX
+                #     acc.y = accX - qAccY
+                #     acc.z = accZ * -1 - qAccZ
+                    
+                # #     # acc.x = accY * -1
+                # #     # acc.y = accX
+                # #     # acc.z = accZ * -1
                     
                 
-                # acc.x = acc.x - ((-1.0)*2.0*(quaternion.x*quaternion.z)-(quaternion.w*quaternion.y))
-                # acc.y = acc.y - ((-1.0)*2.0*(quaternion.y*quaternion.z)-(quaternion.w*quaternion.x))
-                # acc.z = acc.z - (1.0-(2.0*(quaternion.w*quaternion.w)-(quaternion.z*quaternion.z)))
+                # #     # print(f"센서 가속도 x = {accZ * -1}, 쿼터니언 가속도 x = {qAccZ}, 결과 {accZ * -1 - qAccZ}")
+                    
+                    
+                # elif sensor_part == SensorPart.LEFT_LOWER_LEG:
+                #     acc.x = accY * -1 - qAccX
+                #     acc.y = accZ * -1 - qAccY
+                #     acc.z = accX * -1 - qAccZ
+                    
+                # #     # acc.x = accY * -1
+                # #     # acc.y = accZ * -1
+                # #     # acc.z = accX * -1
+                    
+                # #     # print(f"센서 가속도 x ={accY}, 쿼터니언 가속도 x = {qAccX}, 결과 {accY * -1 - qAccX}")
+                # #     # print(f"센서 가속도 x ={accZ}, 쿼터니언 가속도 x = {qAccY}, 결과 {accZ * -1 - qAccY}")
+                # #     # print(f"센서 가속도 x ={accX}, 쿼터니언 가속도 x = {qAccZ}, 결과 {accX * -1 - qAccZ}")
+                    
+                # elif sensor_part == SensorPart.RIGHT_LOWER_LEG:
+                #     # acc.x = accY - qAccX
+                #     # acc.y = accZ - qAccY
+                #     # acc.z = accX * -1 - qAccZ
+                    
+                #     #테스트용 지워도 무방
+                #     acc.x = accY - qAccZ
+                #     acc.y = accZ - qAccX
+                #     acc.z = accX * -1 - qAccY
+                #     # print(f"센서 가속도 y ={accY}, 쿼터니언 가속도 x = {qAccY}, 결과 {accY * -1 - qAccX}")
+                #     # print(f"센서 가속도 z ={accZ}, 쿼터니언 가속도 y = {qAccZ}, 결과 {accZ * -1 - qAccY}")
+                #     # print(f"센서 가속도 x ={accX}, 쿼터니언 가속도 z = {qAccX}, 결과 {accX * -1 - qAccY}")
+                    
+                #     print(f"보정X : {acc.x :.2f},\t 보정Y : {acc.y:.2f},\t 보정Z : {acc.z:.2f},")
+                    # print(f"보정X : {acc.x :.2f},\t 보정Y : {acc.y:.2f},\t 보정Z : {acc.z:.2f},")
+                    
+                # 가속도 inv 처리
+                # if DataManager().sensor_test_acc_data[sensor_part][0] == 999999999 and DataManager().sensor_test_acc_data[sensor_part][1] == 999999999 and DataManager().sensor_test_acc_data[sensor_part][2] == 999999999:
+                #     DataManager().sensor_test_acc_data[sensor_part][0] = acc.x
+                #     DataManager().sensor_test_acc_data[sensor_part][1] = acc.y
+                #     DataManager().sensor_test_acc_data[sensor_part][2] = acc.z
+                    
+                # acc.x -= DataManager().sensor_test_acc_data[sensor_part][0]
+                # acc.y -= DataManager().sensor_test_acc_data[sensor_part][1]
+                # acc.z -= DataManager().sensor_test_acc_data[sensor_part][2]
+                
+                
+                # acc.x *= 9.8*2
+                # acc.y *= 9.8*2
+                # acc.z *= 9.8*2
+                
+                # acc.set_abs()
+                    # acc.x = accY
+                    # acc.y = accZ
+                    # acc.z = accX * -1
+                    
+                    # print(f"센서 가속도 x ={accZ}, 쿼터니언 가속도 x = {qAccY}, 결과 {accX * -1 - qAccZ}")
+                
                 # accX *= -1
                 # accY *= -1
                 # accZ *= -1
-                
-                # accX *= 2
-                # accY *= 2
-                # accZ *= 2
                     
                 # acc.set_abs()
                     
-                #쿼터니언 inv 보정
-                if DataManager().get_first_sensor_data_inv(sensor_part) == 0:
-                    if quaternion.w != 0:
-                        quaternion.quaternion_inverse()
-                        DataManager().first_sensor_data_inv = [sensor_part, quaternion]
-                else:
-                    quaternion = DataManager().get_first_sensor_data_inv(sensor_part) * quaternion 
-                
-
-
                 # if sensor_part == SensorPart.HEAD:
                 #     print(f"w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}", end='\r', flush=True)
 
+                # if (acc.x == 0.0 or acc.x == 1.0 or acc.y == 0.0 or acc.y == 1.0 or acc.z == 0.0 or acc.z == 1.0):
+                #     continue
 
                 # 센서 정보 저장
                 DataManager().sensor_data = [sensor_part, [gyro, acc, mag, quaternion]]
-
+                
+            
             # print("-----------------------------")
-            DataManager().set_pickle_data()
+            if DataManager().t_pose_set_end:
+                DataManager().set_pickle_data()
             
         sock.close()
 

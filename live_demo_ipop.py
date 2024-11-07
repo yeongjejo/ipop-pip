@@ -14,6 +14,10 @@ import socket
 import numpy as np
 import matplotlib.pyplot as plt
 
+from protocol.xsesn_udp_server import XsensUDPServer
+
+from sensor.sensor_part import SensorPart
+
 class IMUSet:
     g = 9.8
     test_i = -1
@@ -106,7 +110,7 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
 
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
@@ -116,11 +120,13 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # print(imu_set.get_ipop())
         RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
     else:
-        RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
-        # RMI = torch.eye(3)
-
+        # RMI = torch.tensor([[0, 0, 1], [-1, 0, 0], [0, 1, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
+        # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
+        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
+        # RMI = torch.eye(3).mm(RSI)
+        torch.save(RMI, os.path.join(paths.temp_dir, 'RMI.pt'))
     # print(f'RMI.shape: {RMI.shape}\nRMI:\n{RMI}')
-
+    time.sleep(3)
     # print('-----------------------')
 
     RIS = imu_set.get_ipop()[0]
@@ -254,10 +260,11 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    UDPStationBroadcastReceiver().start()
-    time.sleep(1)
-    UDPServer().start()
-
+    # UDPStationBroadcastReceiver().start()
+    # time.sleep(1)
+    # UDPServer().start()
+    XsensUDPServer().start()
+    # time.sleep(99999)
 
     os.makedirs(paths.temp_dir, exist_ok=True)
     os.makedirs(paths.live_record_dir, exist_ok=True)
@@ -298,7 +305,7 @@ if __name__ == '__main__':
     clock = Clock()
     RMI, RSB = [0, 0]
     start_time = 10000
-    
+    part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
     re_tpose = True
     # print("00000000000000000000000")
     while not test:

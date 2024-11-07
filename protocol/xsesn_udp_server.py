@@ -18,9 +18,10 @@ import math
 
 
 
+from sensor.sensor_part import SensorPart
 
 
-class UDPServer(threading.Thread):
+class XsensUDPServer(threading.Thread):
 
     testX = 0
     testY = 0
@@ -37,7 +38,9 @@ class UDPServer(threading.Thread):
     def run(self):
         self._running = True
         
-
+        
+        part_sequence = [SensorPart.WAIST, SensorPart.HEAD, SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG]
+        
         # port = 56775
         port = 55001
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -45,7 +48,7 @@ class UDPServer(threading.Thread):
         station_info = StationInfo()
         
         while self._running:
-            buffer = bytearray(907)  # 수신할 데이터 사이즈 설정
+            buffer = bytearray(177)  # 수신할 데이터 사이즈 설정
             
             # print("000000000000000000")
             # 데이터 수신
@@ -56,18 +59,17 @@ class UDPServer(threading.Thread):
             # 데이터 확인
             receive_station_byte_data = buffer
             
-            print(receive_station_byte_data)
-            continue
+            # continue
             
             # 헤더 데이터 저장
             station_info.header = [receive_station_byte_data[0], receive_station_byte_data[1]]
 
-            # 버전 저장
-            station_info.version = receive_station_byte_data[2] & 0xFF
+            # # 버전 저장
+            # station_info.version = receive_station_byte_data[2] & 0xFF
 
             # 센서 데이터 저장
             # iMotion_Parsing_(PIP packet)241016_파이썬_파싱 문서 참고
-            start_byte_num = 3
+            start_byte_num = 2
             
             # 0이면 t-pose 진행중
             # 1이면 동작 실행
@@ -81,49 +83,52 @@ class UDPServer(threading.Thread):
             #     DataManager().t_pose_set_end = True
             
 
-
+# 1 ,4,4,4,4, 4,4,4
+#총 
             while True:
                 # 모든센서 저장이 끝나면 종료
-                if start_byte_num > 852:
+                if start_byte_num > 147:
                     break
 
-                sensor_byte_data = receive_station_byte_data[start_byte_num:start_byte_num+53] # 추출할 센서 데이터
-                start_byte_num += 53 # 다음 탐색할 센서의 바이트 시작 번호
+                sensor_byte_data = receive_station_byte_data[start_byte_num:start_byte_num+29] # 추출할 센서 데이터
+                start_byte_num += 29 # 다음 탐색할 센서의 바이트 시작 번호
                 
                 # 센서 번호 저장
                 try:
-                    sensor_part = SensorPart(sensor_byte_data[0] & 0xFF)
+                    sensor_part = part_sequence[(sensor_byte_data[0] & 0xFF) - 48]
                 except ValueError:
                     continue
                 
-                # 자이로 x, y, z 계산
-                gyroX = self.cul_byte_data(sensor_byte_data[1:5])
-                gyroY = self.cul_byte_data(sensor_byte_data[5:9])
-                gyroZ = self.cul_byte_data(sensor_byte_data[9:13])
-                gyro = Gyro(gyroX, gyroY, gyroZ)
+                # # 자이로 x, y, z 계산
+                # gyroX = self.cul_byte_data(sensor_byte_data[1:5])
+                # gyroY = self.cul_byte_data(sensor_byte_data[5:9])
+                # gyroZ = self.cul_byte_data(sensor_byte_data[9:13])
+                gyro = Gyro(0, 0, 0)
 
 
                 # 가속도 x, y, z 계산
-                accX = self.cul_byte_data(sensor_byte_data[13:17])
-                accY = self.cul_byte_data(sensor_byte_data[17:21])
-                accZ = self.cul_byte_data(sensor_byte_data[21:25])
-                raw_acc = Acc(accX, accY, accZ)
+                accX = self.cul_byte_data(sensor_byte_data[17:21])
+                accY = self.cul_byte_data(sensor_byte_data[21:25])
+                accZ = self.cul_byte_data(sensor_byte_data[25:29])
+                acc = Acc(accX, accY, accZ)
                 # acc.norm()
             
     
-                # 자기계 x, y, z 계산
-                magX = self.cul_byte_data(sensor_byte_data[25:29])
-                magY = self.cul_byte_data(sensor_byte_data[29:33])
-                magZ = self.cul_byte_data(sensor_byte_data[33:37])
-                mag = Mag(magX, magY, magZ)
+                # # 자기계 x, y, z 계산
+                # magX = self.cul_byte_data(sensor_byte_data[1:5])
+                # magY = self.cul_byte_data(sensor_byte_data[5:9])
+                # magZ = self.cul_byte_data(sensor_byte_data[9:13])
+                mag = Mag(0, 0, 0)
 
 
                 # 쿼터니언 w, x, y, z 계산
-                qW = self.cul_byte_data(sensor_byte_data[37:41])
-                qX = self.cul_byte_data(sensor_byte_data[41:45])
-                qY = self.cul_byte_data(sensor_byte_data[45:49])
-                qZ = self.cul_byte_data(sensor_byte_data[49:53])
+                qW = self.cul_byte_data(sensor_byte_data[1:5])
+                qX = self.cul_byte_data(sensor_byte_data[5:9])
+                qY = self.cul_byte_data(sensor_byte_data[9:13])
+                qZ = self.cul_byte_data(sensor_byte_data[13:17])
                 quaternion = Quaternion(qW, qX, qY,  qZ)
+                
+                
                 # quaternion.norm()
                 
                 # print(f"part = {sensor_part} \t\t w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
@@ -185,15 +190,15 @@ class UDPServer(threading.Thread):
                 qAcc = Acc(qAccX, qAccY, qAccZ)
                 # qAcc.norm()
                 
-                acc = Acc(0.0, 0.0, 0.0)
-                acc.x = -raw_acc.x - qAcc.x
-                acc.y = -raw_acc.y - qAcc.y
-                acc.z = -raw_acc.z - qAcc.z                
-                # acc.norm()
+                # acc = Acc(0.0, 0.0, 0.0)
+                # acc.x = -raw_acc.x - qAcc.x
+                # acc.y = -raw_acc.y - qAcc.y
+                # acc.z = -raw_acc.z - qAcc.z                
+                # # acc.norm()
                 
-                acc.x *= 9.81
-                acc.y *= 9.81
-                acc.z *= 9.81
+                # acc.x *= 9.81
+                # acc.y *= 9.81
+                # acc.z *= 9.81
 
 
                 # acc.norm()
@@ -244,7 +249,7 @@ class UDPServer(threading.Thread):
                 #     # qAccZ = 1.0 - 2.0 * (quaternion.w * quaternion.w + quaternion.z * quaternion.z)
                     
                 # #     # # print(f"오른 팔 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
-                #     print(f"11센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
+                    # print(f"11센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
                 #     # print(f"오른팔 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
                 #     # quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[31]
                     
@@ -263,7 +268,7 @@ class UDPServer(threading.Thread):
                     
                 # #     quaternion.norm()
                     
-                #     print(f"44센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
+                    # print(f"44센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
                     # print(f"왼팔 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
                 #     quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[37]
                 #     # 25, 31, 37
@@ -272,7 +277,7 @@ class UDPServer(threading.Thread):
                     
                 # #     accX *= 1.25
                 # #     accY *= 1.25
-                #     print(f"55센서 가속도 x = {accX:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {accY:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
+                    # print(f"55센서 가속도 x = {accX:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {accY:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
                 #     accZ *= 1.25
                     # print(f"왼다리 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
                 #     # quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[25]
@@ -282,7 +287,7 @@ class UDPServer(threading.Thread):
                 # #     accX *= 1.25
                 # #     accY *= 1.25
                 # #     accZ *= 1.25
-                #     print(f"66센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
+                    # print(f"66센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y:.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
                     # print(f"센서 가속도 x = {accZ}, 쿼터니언 가속도 x = {qAccZ}")
                     # print(f"오른 다리 w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
                 #     # quaternion, acc = self.get_coordinate_dict(qW, qX, qY, qZ, accX, accY, accZ)[1]
@@ -452,6 +457,7 @@ class UDPServer(threading.Thread):
                     (sensor_data[0] & 0xFF)
 
         float_value = struct.unpack('<f', struct.pack('<I', int_bits))[0]
+        # float_value = struct.unpack('>f', struct.pack('>I', int_bits))[0]
         return float_value
 
     # def cul_axis_data:

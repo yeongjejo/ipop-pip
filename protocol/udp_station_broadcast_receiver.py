@@ -26,9 +26,9 @@ class UDPStationBroadcastReceiver(threading.Thread):
             while self._running:
                 buffer = bytearray(11)  # 수신할 데이터 사이즈 설정
 
-                # print(11111111111111111111)
+                print(11111111111111111111)
                 data, addr = ds.recvfrom(len(buffer))  # 데이터 수신
-                # print(22222222222222)
+                print(22222222222222)
                 
                 # 클라이언트 IP 주소 및 포트 번호 확인
                 client_ip = addr[0]

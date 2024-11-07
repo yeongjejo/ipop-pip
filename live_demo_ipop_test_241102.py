@@ -141,32 +141,31 @@ if __name__ == '__main__':
     while not test:
         try:
             # Get real-time quaternion data
-            joint_index = 4
+            joint_index = 1
             raw_data_quaternion, a = imu_set.get_ipop()
             raw_data_quaternion = torch.tensor(raw_data_quaternion)
             raw_data_quaternion = raw_data_quaternion[joint_index]
-            raw_data_quaternion = [raw_data_quaternion[0], -raw_data_quaternion[3], raw_data_quaternion[1], raw_data_quaternion[2]]
+            raw_data_quaternion = [raw_data_quaternion[0], raw_data_quaternion[1], raw_data_quaternion[2], raw_data_quaternion[3]]
+            # if count == 50:
+            # #     mountingAdjustedRotation = raw_data_quaternion
             
-            if count == 50:
-            #     mountingAdjustedRotation = raw_data_quaternion
-            
-                gyrofix_y = y_only_euler_to_quaternion(raw_data_quaternion)
-                #print(gyrofix_y)
-                gyrofix = quaternion_inverse(gyrofix_y)
+            #     gyrofix_y = y_only_euler_to_quaternion(raw_data_quaternion)
+            #     #print(gyrofix_y)
+            #     gyrofix = quaternion_inverse(gyrofix_y)
                 
-                # gyrofix_x = x_only_euler_to_quaternion(mountingAdjustedRotation)
-                # gyrofix_x = quaternion_inverse(gyrofix_x)
-                # gyrofix_z = y_only_euler_to_quaternion(mountingAdjustedRotation)
-                # gyrofix_z = quaternion_inverse(gyrofix_z)
+            #     # gyrofix_x = x_only_euler_to_quaternion(mountingAdjustedRotation)
+            #     # gyrofix_x = quaternion_inverse(gyrofix_x)
+            #     # gyrofix_z = y_only_euler_to_quaternion(mountingAdjustedRotation)
+            #     # gyrofix_z = quaternion_inverse(gyrofix_z)
                 
                 
-                # gyrofix = quaternion_multiply(raw_data_quaternion, gyrofix_y)
-                # gyrofix = quaternion_multiply(gyrofix, gyrofix_x)
-                #quaternion = quaternion_multiply(raw_data_quaternion, gyrofix)
-                attachmentFix = quaternion_multiply(gyrofix, raw_data_quaternion)
-                attachmentFix = quaternion_inverse(attachmentFix)
+            #     # gyrofix = quaternion_multiply(raw_data_quaternion, gyrofix_y)
+            #     # gyrofix = quaternion_multiply(gyrofix, gyrofix_x)
+            #     #quaternion = quaternion_multiply(raw_data_quaternion, gyrofix)
+            #     attachmentFix = quaternion_multiply(gyrofix, raw_data_quaternion)
+            #     attachmentFix = quaternion_inverse(attachmentFix)
                 
-                print("리셋!!!!!!!!!!!")
+                # print("리셋!!!!!!!!!!!")
                 
             
             count += 1
@@ -194,8 +193,8 @@ if __name__ == '__main__':
             
             # attachmentFix = quaternion_multiply(raw_data_quaternion, attachmentFix)
             
-            raw_data_quaternion = quaternion_multiply(gyrofix, raw_data_quaternion)
-            raw_data_quaternion = quaternion_multiply(raw_data_quaternion, attachmentFix)
+            # raw_data_quaternion = quaternion_multiply(gyrofix, raw_data_quaternion)
+            # raw_data_quaternion = quaternion_multiply(raw_data_quaternion, attachmentFix)
 
             # quaternion_test = quaternion_inverse((0.707, 0.707, 0.0, 0.0))
             # gyrofix_1 = y_only_euler_to_quaternion()
@@ -217,7 +216,7 @@ if __name__ == '__main__':
             rotation_matrix = r.as_matrix()
 
             # Rotate vertices
-            rotated_vertices = vertices @ rotation_matrix.T
+            rotated_vertices = vertices @ rotation_matrix.T * -1
 
             # Plot the rotated box
             ax.quiver(0, 0, 0, 2, 0, 0, color='r', arrow_length_ratio=0.05, label='X-axis')  # X-axis in red
@@ -227,7 +226,7 @@ if __name__ == '__main__':
             # Apply rotation to local axes and plot as arrows
             origin = np.array([0, 0, 0])
             local_axes = np.identity(3)  # Local X, Y, Z axes before rotation
-            rotated_axes = local_axes @ rotation_matrix.T
+            rotated_axes = local_axes @ rotation_matrix.T * -1
 
             ax.quiver(*origin, *rotated_axes[0] * 2, color='r', linestyle=':', arrow_length_ratio=0.05, label='Rotated X-axis')
             ax.quiver(*origin, *rotated_axes[1] * 2, color='g', linestyle=':', arrow_length_ratio=0.05, label='Rotated Y-axis')

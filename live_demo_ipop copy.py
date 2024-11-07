@@ -53,7 +53,8 @@ class IMUSet:
     def get_ipop(self):
         if self.test:
             test_a_list, test_q_list, _ = DataManager().process_dipimu()
-            self.test_i += 300
+            # self.test_i += 300
+            self.test_i = 0
 
             q = test_q_list[self.test_i]
             a = test_a_list[self.test_i]
@@ -106,21 +107,21 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
 
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
     if test:
-        # RMI = torch.eye(3)
-        RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+        RMI = torch.eye(3)
+        # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
         # print(imu_set.get_ipop())
-        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
     else:
-        RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
+        RMI = torch.tensor([[0, -1, 0], [0, 0, -1], [0, 0, -1.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
         # RMI = torch.eye(3)
 
     # print(f'RMI.shape: {RMI.shape}\nRMI:\n{RMI}')
-
+    time.sleep(3)
     # print('-----------------------')
 
     RIS = imu_set.get_ipop()[0]
@@ -170,7 +171,7 @@ def test_mode():
         q = test_q_list[i]
         a = test_a_list[i]
 
-        p = pose_gt[309]
+        p = pose_gt[0]
         
         # print(a)
 
@@ -254,8 +255,8 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    UDPStationBroadcastReceiver().start()
-    time.sleep(1)
+    # UDPStationBroadcastReceiver().start()
+    # time.sleep(3)
     UDPServer().start()
 
 
@@ -273,7 +274,7 @@ if __name__ == '__main__':
     #conn, addr = server_for_unity.accept()
 
 
-    test = False
+    test = True
     
     if test:
         test_mode()
@@ -304,10 +305,10 @@ if __name__ == '__main__':
     while not test:
         
         # print(1111111111)
-        # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
-        #     # print("121212121")
-        #     re_tpose = True
-        #     continue
+        if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
+            # print("121212121")
+            re_tpose = True
+            continue
         
         # # print("121212121")
         if re_tpose:
@@ -373,7 +374,7 @@ if __name__ == '__main__':
         # print((now_time-start_time) * 1000)
         
         # start_time = now_time
-        clock.tick(63)
+        
         try:
             q, a = imu_set.get_ipop()
             RMB = RMI.matmul(q).matmul(RSB)

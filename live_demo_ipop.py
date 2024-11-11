@@ -63,11 +63,11 @@ class IMUSet:
             
             # test_a_list, test_q_list, _ = get_xsens_log_test_data()
 
-            q = test_q_list[0]
-            a = test_a_list[0]
+            q = test_q_list[self.test_i]
+            a = test_a_list[self.test_i]
             
             
-            self.test_i += 309
+            self.test_i += 3
             
             print("1"*90)
             # a = -torch.tensor(a) / 1000 * 9.8                        # acceleration is reversed
@@ -119,13 +119,13 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
 
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
     if test:
         # RMI = torch.eye(3)
-        RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+        # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
         # print(imu_set.get_ipop())
         RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
         
@@ -137,11 +137,12 @@ def tpose_calibration_ipop_2024(test, imu_set):
     else:
         # RMI = torch.tensor([[0, 0, 1], [-1, 0, 0], [0, 1, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
         # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
-        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
-        # RMI = torch.eye(3).mm(RSI)
+        RMI = torch.tensor([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
+        # RMI = torch.eye(3)
         torch.save(RMI, os.path.join(paths.temp_dir, 'RMI.pt'))
     # print(f'RMI.shape: {RMI.shape}\nRMI:\n{RMI}')
     if not test:
+        input('Stand straight in T-pose and press enter. The calibration will begin in 3 seconds')
         time.sleep(3)
     # print('-----------------------')
 
@@ -305,10 +306,10 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    # UDPStationBroadcastReceiver().start()
+    UDPStationBroadcastReceiver().start()
     # time.sleep(1)
-    # UDPServer().start()
-    XsensUDPServer().start()
+    UDPServer().start()
+    # XsensUDPServer().start()
     # time.sleep(99999)
 
     os.makedirs(paths.temp_dir, exist_ok=True)
@@ -325,7 +326,7 @@ if __name__ == '__main__':
     #conn, addr = server_for_unity.accept()
 
 
-    test = True
+    test = False
     
     if test:
         test_mode()

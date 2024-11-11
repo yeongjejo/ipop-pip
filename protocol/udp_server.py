@@ -56,8 +56,8 @@ class UDPServer(threading.Thread):
             # 데이터 확인
             receive_station_byte_data = buffer
             
-            print(receive_station_byte_data)
-            continue
+            # print(receive_station_byte_data)
+            # continue
             
             # 헤더 데이터 저장
             station_info.header = [receive_station_byte_data[0], receive_station_byte_data[1]]

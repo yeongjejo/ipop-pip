@@ -3,3 +3,4 @@ r"""
 """
 
 from .bullet import *
+from .view_rotation import *

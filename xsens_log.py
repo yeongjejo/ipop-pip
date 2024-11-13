@@ -44,7 +44,7 @@ def get_part_from_filename(file_path):
 
 def get_xsens_log_test_data():
     # CSV 파일들이 있는 폴더 경로
-    folder_path = '/home/user/Desktop/log/1'
+    folder_path = '/home/user/Desktop/log/ts'
 
     # 폴더 내의 모든 CSV 파일들의 경로를 출력
     csv_files = glob.glob(os.path.join(folder_path, '**', '*.csv'), recursive=True)
@@ -102,8 +102,8 @@ def get_xsens_log_test_data():
             
             
             
-            if j==1 and i <= 20:
-                print(qAccZ, ta.z)
+            # if j==1 and i <= 20:
+            #     print(qAccZ, ta.z)
                 # print(re_acc_x, re_acc_y, re_acc_z)
             
             frame_acc.append([re_acc_x, re_acc_y, re_acc_z])

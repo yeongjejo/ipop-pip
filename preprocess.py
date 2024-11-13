@@ -6,6 +6,7 @@ r"""
 """
 
 
+import csv
 import articulate as art
 import torch
 import os
@@ -14,9 +15,12 @@ from config import paths, amass_data
 import numpy as np
 import glob
 
+from log_test import rotation_matrix_to_quaternion
+from sensor.sensor_part import SensorPart
+
 def process_dipimu():
-    imu_mask = [0,1,2,3,4,5]
-    test_split = ['s_01']
+    imu_mask = [7, 8, 11, 12, 0, 2]
+    test_split = ['s_07']
     accs, oris, poses, trans = [], [], [], []
 
     for subject_name in test_split:
@@ -37,12 +41,62 @@ def process_dipimu():
             acc, ori, pose = acc[6:-6], ori[6:-6], pose[6:-6]
 
 
-            print(acc[0][0])
-            print(ori[0][0])
-            print(pose)
-            print(motion_name)
+            # print(acc[0][0])
+            # print(ori[0][0])
+            # print(pose)
+            # print(motion_name)
 
             if torch.isnan(acc).sum() == 0 and torch.isnan(ori).sum() == 0 and torch.isnan(pose).sum() == 0:
+                if motion_name == '04.pkl':
+                        # 998
+                        # print(len(ori), len(ori[0]), len(ori[0][0]), len(ori[0][0][0]))
+                        # num = int((len(ori)/2))
+                        # t = ori[num:]
+                        # print(acc.tolist())
+                        # print(ori[0])
+                        
+                        tq = [" qW, ", " qX, ", " qY, ", " qZ, "]
+                        tacc = [" accX, ", " accY, ", " accZ, "]
+                        part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
+        
+                        title_str = ""
+                        for data in part_sequence:
+                            for q in tq:
+                                title_str += str(data) + str(q)
+                        
+                        for data in part_sequence:
+                            for acct in tacc:
+                                title_str += str(data) + str(acct)
+                        
+                        title_str += "\n"
+                        # print(title_str)
+                        for item1, item2 in zip(ori, acc):
+                            q = rotation_matrix_to_quaternion(item1).tolist()
+                            acc = item2.tolist()
+                            
+                            q_str = str(q).replace('[', '').replace(']', '')
+                            acc_str = str(acc).replace('[', '').replace(']', '')
+                            
+                            # print('----')
+                            title_str += (q_str + ", " + acc_str + ", " )
+                            title_str += "\n"
+                            # print(q, acc)
+                            
+                        # 문자열을 리스트로 변환 (쉼표로 구분된 데이터)
+                        lines = title_str.split('\n')
+
+                        # CSV 파일로 저장
+                        with open('output.csv', mode='w', newline='', encoding='utf-8') as file:
+                            writer = csv.writer(file)
+    
+                            # 각 줄을 쉼표로 나누어서 CSV에 저장
+                            for line in lines:
+                                data = line.split(',')  # 쉼표로 구분된 데이터 리스트로 변환
+                                writer.writerow(data)  # 리스트를 한 행으로 저장
+                        
+                        return acc.tolist(), ori, pose
+                
+                
                 accs.append(acc.clone())
                 oris.append(ori.clone())
                 poses.append(pose.clone())
@@ -118,5 +172,5 @@ def process_totalcapture():
 
 if __name__ == '__main__':
     # process_amass()
-    # process_dipimu()
-    process_totalcapture()
+    process_dipimu()
+    # process_totalcapture()

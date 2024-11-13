@@ -38,8 +38,8 @@ class UDPServer(threading.Thread):
         self._running = True
         
 
-        # port = 56775
-        port = 56476
+        port = 56775
+        # port = 56476
         # port = 55001
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))
@@ -192,10 +192,10 @@ class UDPServer(threading.Thread):
                 acc.y = -raw_acc.y - qAcc.y
                 acc.z = -raw_acc.z - qAcc.z                
                 # acc.norm()
-                
-                acc.x *= 9.81
-                acc.y *= 9.81
-                acc.z *= 9.81
+            
+                acc.x *= 9.8
+                acc.y *= 9.8
+                acc.z *= 9.8
 
 
                 # acc.norm()
@@ -208,7 +208,7 @@ class UDPServer(threading.Thread):
                 #     # print(-raw_acc.z - qAcc.z)
                 #     # print(f"중력 가속도 제거 x = {acc.x} y = {acc.y} z = {acc.z}")
                 #     # print(f"쿼터니언 가속도 x = {qAcc.x} y = {qAcc.y} z = {qAcc.z}")
-                #     print(f"222센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y :.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
+                    # print(f"222센서 가속도 x = {acc.x:.2f},\t 쿼터니언 가속도 x = {qAcc.x:.2f},\t 센서 가속도 y = {acc.y :.2f},\t 쿼터니언 가속도 y = {qAcc.y:.2f},\t 센서 가속도 z = {acc.z:.2f},\t 쿼터니언 가속도 z = {qAcc.z:.2f}")
                 #     # print(f"센서 가속도 x = {accX:.5f},\t 쿼터니언 가속도 x = {qAccX:.2f},\t 센서 가속도 y = {accY:.2f},\t 쿼터니언 가속도 y = {qAccY:.2f},\t 센서 가속도 z = {accZ:.2f},\t 쿼터니언 가속도 z = {qAccZ:.2f}")
                 # # #     tx = accZ * -1  - qAccX
                 # # #     ty = accX - qAccY

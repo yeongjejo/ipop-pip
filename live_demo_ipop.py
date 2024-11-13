@@ -59,17 +59,17 @@ class IMUSet:
 
     def get_ipop(self):
         if self.test:
-            test_a_list, test_q_list, _ = DataManager().process_dipimu()
+            # test_a_list, test_q_list, _ = DataManager().process_dipimu()
             
-            # test_a_list, test_q_list, _ = get_xsens_log_test_data()
+            test_a_list, test_q_list, _ = get_xsens_log_test_data()
 
             q = test_q_list[self.test_i]
             a = test_a_list[self.test_i]
             
             
-            self.test_i += 3
+            self.test_i += 60
             
-            print("1"*90)
+            # print("1"*90)
             # a = -torch.tensor(a) / 1000 * 9.8                        # acceleration is reversed
             # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])   # calculate global free acceleration
 
@@ -127,23 +127,25 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # RMI = torch.eye(3)
         # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
         # print(imu_set.get_ipop())
-        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
         
-        # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+        # RMI = torch.tensor([[0, 0, -1], [0, -1, 0], [-1, 0, 0.]]).mm(RSI)
+        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
         # RMI = torch.eye(3)
-        print(RMI)
-        print('-'*30)
+        # print(RMI)
+        # print('-'*30)
         # RMI = torch.tensor(test_num(1)).mm(RSI)
     else:
         # RMI = torch.tensor([[0, 0, 1], [-1, 0, 0], [0, 1, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
         # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
-        RMI = torch.tensor([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
+        # RMI = torch.tensor([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]).mm(RSI)#아이팝 센서
         # RMI = torch.eye(3)
+        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
         torch.save(RMI, os.path.join(paths.temp_dir, 'RMI.pt'))
     # print(f'RMI.shape: {RMI.shape}\nRMI:\n{RMI}')
     if not test:
         input('Stand straight in T-pose and press enter. The calibration will begin in 3 seconds')
-        time.sleep(3)
+        time.sleep(5)
     # print('-----------------------')
 
     RIS = imu_set.get_ipop()[0]
@@ -179,8 +181,8 @@ def test_mode():
     clock = Clock()
     start_time = 10000
     # 테스트 코드!!!!!!!!!!!!
-    # test_a_list, test_q_list, pose_gt = get_xsens_log_test_data()
-    test_a_list, test_q_list, pose_gt = DataManager().process_dipimu()
+    test_a_list, test_q_list, pose_gt = get_xsens_log_test_data()
+    # test_a_list, test_q_list, pose_gt = DataManager().process_dipimu()
     
     # print(test_a_list[309])
     
@@ -188,14 +190,17 @@ def test_mode():
     
     # for i in range(len(test_q_list[:600])):
     for i in range(len(test_q_list[:])):
-        clock.tick(63)
+        # clock.tick(800)
+        time.sleep(0.05)
     # for i in range(20):
         # clock.tick(1000)
         # time.sleep(0.01)
         q = test_q_list[i]
         a = test_a_list[i]
+        
+        # print(q)
 
-        p = pose_gt[i]
+        # p = pose_gt[i]
         
         # print(a)
 
@@ -206,35 +211,35 @@ def test_mode():
         g_y3.append(a[5][2])
         g_y4.append(np.linalg.norm(np.array(a[1])))
         
-        if i==309:
-            raw_qs = rotation_matrix_to_quaternion(q)
-            part_str = ["왼팔", "오른팔", "왼다리", "오른다리", "머리", "허리"]
-            index = 0
-            for raw_q in raw_qs:
-                qAccX = (-1.0) * 2.0 * (raw_q[1] * raw_q[3] - raw_q[0] * raw_q[2])
-                qAccY = (-1.0) * 2.0 * (raw_q[2] * raw_q[3] + raw_q[0]* raw_q[1])
-                qAccZ = 1.0 - 2.0 * (raw_q[0] * raw_q[0] + raw_q[3] * raw_q[3])
-                print(f"RMB 계산전 {part_str[index]} 쿼터니언 가속도 x:{qAccX} y:{qAccY} z:{qAccZ}")
-                index+=1
+        # if i==309:
+        #     raw_qs = rotation_matrix_to_quaternion(q)
+        #     part_str = ["왼팔", "오른팔", "왼다리", "오른다리", "머리", "허리"]
+        #     index = 0
+        #     for raw_q in raw_qs:
+        #         qAccX = (-1.0) * 2.0 * (raw_q[1] * raw_q[3] - raw_q[0] * raw_q[2])
+        #         qAccY = (-1.0) * 2.0 * (raw_q[2] * raw_q[3] + raw_q[0]* raw_q[1])
+        #         qAccZ = 1.0 - 2.0 * (raw_q[0] * raw_q[0] + raw_q[3] * raw_q[3])
+        #         print(f"RMB 계산전 {part_str[index]} 쿼터니언 가속도 x:{qAccX} y:{qAccY} z:{qAccZ}")
+        #         index+=1
             
-            print()
+        #     print()
             # print(art.math.rotation_matrix_to_euler_angle(q[0]) * 180 / math.pi)
             # print(RSB)
             # print(RMI)
             
         RMB = RMI.matmul(q).matmul(RSB)
-        if i==309:
-            raw_qs = rotation_matrix_to_quaternion(RMB)
-            part_str = ["왼팔", "오른팔", "왼다리", "오른다리", "머리", "허리"]
-            index = 0
-            for raw_q in raw_qs:
-                qAccX = (-1.0) * 2.0 * (raw_q[1] * raw_q[3] - raw_q[0] * raw_q[2])
-                qAccY = (-1.0) * 2.0 * (raw_q[2] * raw_q[3] + raw_q[0]* raw_q[1])
-                qAccZ = 1.0 - 2.0 * (raw_q[0] * raw_q[0] + raw_q[3] * raw_q[3])
-                print(f"RMB 계산후 {part_str[index]} 쿼터니언 가속도 x:{qAccX} y:{qAccY} z:{qAccZ}")
+        # if i==309:
+        #     raw_qs = rotation_matrix_to_quaternion(RMB)
+        #     part_str = ["왼팔", "오른팔", "왼다리", "오른다리", "머리", "허리"]
+        #     index = 0
+        #     for raw_q in raw_qs:
+        #         qAccX = (-1.0) * 2.0 * (raw_q[1] * raw_q[3] - raw_q[0] * raw_q[2])
+        #         qAccY = (-1.0) * 2.0 * (raw_q[2] * raw_q[3] + raw_q[0]* raw_q[1])
+        #         qAccZ = 1.0 - 2.0 * (raw_q[0] * raw_q[0] + raw_q[3] * raw_q[3])
+        #         print(f"RMB 계산후 {part_str[index]} 쿼터니언 가속도 x:{qAccX} y:{qAccY} z:{qAccZ}")
                 
-                index+=1
-            print("+"*30)
+        #         index+=1
+        #     print("+"*30)
         a = torch.tensor(a)
         # a[0][2] *= -1
         # a[1][2] *= -1
@@ -307,15 +312,17 @@ def test_mode():
 
 if __name__ == '__main__':
     UDPStationBroadcastReceiver().start()
-    # time.sleep(1)
+    time.sleep(2)
     UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
 
-    os.makedirs(paths.temp_dir, exist_ok=True)
-    os.makedirs(paths.live_record_dir, exist_ok=True)
 
-    is_executable = False
+    # time.sleep(1)
+    # os.makedirs(paths.temp_dir, exist_ok=True)
+    # os.makedirs(paths.live_record_dir, exist_ok=True)
+
+    # is_executable = False
     #server_for_unity = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #server_for_unity.bind(('', 8888))
     #server_for_unity.listen(1)
@@ -436,6 +443,7 @@ if __name__ == '__main__':
             print(RSB)
             print(q)
             print(a)
+            print("에러!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11")
         # print(22222222222222222)
         
         # a = -torch.tensor(a) * 9.8                         # acceleration is reversed
@@ -478,7 +486,7 @@ if __name__ == '__main__':
         # print(s)
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = ('192.168.201.198', 5005)
+        server_address = ('192.168.201.100', 5005)
         sock.sendto(s.encode('utf-8'), server_address)
         
         

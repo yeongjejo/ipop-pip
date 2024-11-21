@@ -8,6 +8,7 @@ import os
 from config import *
 #import keyboard
 from data_manager import DataManager
+from noitom_log import get_noitom_log_test_data
 from protocol.udp_server import UDPServer
 from protocol.udp_station_broadcast_receiver import UDPStationBroadcastReceiver
 import time
@@ -27,7 +28,7 @@ class IMUSet:
 
     def __init__(self, test):
 
-        self.n_imus = 6
+        self.n_imus = 0
         self.test = test
 
 
@@ -59,15 +60,15 @@ class IMUSet:
 
     def get_ipop(self):
         if self.test:
-            # test_a_list, test_q_list, _ = DataManager().process_dipimu()
+            test_a_list, test_q_list, _ = DataManager().process_dipimu()
             
-            test_a_list, test_q_list, _ = get_xsens_log_test_data()
+            # test_a_list, test_q_list, _ = get_xsens_log_test_data()
 
             q = test_q_list[self.test_i]
             a = test_a_list[self.test_i]
             
             
-            self.test_i += 60
+            self.test_i += 0
             
             # print("1"*90)
             # a = -torch.tensor(a) / 1000 * 9.8                        # acceleration is reversed
@@ -82,7 +83,7 @@ class IMUSet:
         # a = -torch.tensor(a) / 1000 * 9.8  # acceleration is reversed
         # a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])  # calculate global free acceleration
 
-        
+        # print(q)
         
         
 	
@@ -103,7 +104,7 @@ def tpose_calibration_ipop_2023():
     #    RMI = torch.load(os.path.join(paths.temp_dir, 'RMI.pt'))
 
     imu_set.clear()
-    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
     # print(imu_set.get_ipop())
     RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
     # print(imu_set.get_ipop())
@@ -119,7 +120,7 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
 
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
@@ -127,10 +128,12 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # RMI = torch.eye(3)
         # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
         # print(imu_set.get_ipop())
-        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
         
         # RMI = torch.tensor([[0, 0, -1], [0, -1, 0], [-1, 0, 0.]]).mm(RSI)
-        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])
+        # RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]]).mm(RSI)
+        # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]])
         # RMI = torch.eye(3)
         # print(RMI)
         # print('-'*30)
@@ -140,13 +143,18 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
         # RMI = torch.tensor([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]).mm(RSI)#아이팝 센서
         # RMI = torch.eye(3)
-        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-        torch.save(RMI, os.path.join(paths.temp_dir, 'RMI.pt'))
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        RMI = torch.eye(3)
+        
+        # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+        # RMI = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, -1.]]).mm(RSI)
+        
+        # torch.save(RMI, os.path.join(paths.temp_dir, 'RMI.pt'))
     # print(f'RMI.shape: {RMI.shape}\nRMI:\n{RMI}')
-    if not test:
-        input('Stand straight in T-pose and press enter. The calibration will begin in 3 seconds')
-        time.sleep(5)
-    # print('-----------------------')
+    # if not test:
+    #     input('Stand straight in T-pose and press enter. The calibration will begin in 3 seconds')
+    #     time.sleep(3)
+    # # print('-----------------------')
 
     RIS = imu_set.get_ipop()[0]
     
@@ -181,8 +189,9 @@ def test_mode():
     clock = Clock()
     start_time = 10000
     # 테스트 코드!!!!!!!!!!!!
-    test_a_list, test_q_list, pose_gt = get_xsens_log_test_data()
-    # test_a_list, test_q_list, pose_gt = DataManager().process_dipimu()
+    # test_a_list, test_q_list, pose_gt = get_xsens_log_test_data()
+    # test_a_list, test_q_list, pose_gt = get_noitom_log_test_data()
+    test_a_list, test_q_list, pose_gt = DataManager().process_dipimu()
     
     # print(test_a_list[309])
     
@@ -191,7 +200,7 @@ def test_mode():
     # for i in range(len(test_q_list[:600])):
     for i in range(len(test_q_list[:])):
         # clock.tick(800)
-        time.sleep(0.05)
+        # time.sleep(0.05)
     # for i in range(20):
         # clock.tick(1000)
         # time.sleep(0.01)
@@ -241,6 +250,11 @@ def test_mode():
         #         index+=1
         #     print("+"*30)
         a = torch.tensor(a)
+        
+        # a = -torch.tensor(a) / 1000 * 9.8                         # acceleration is reversed
+        # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])
+        
+        
         # a[0][2] *= -1
         # a[1][2] *= -1
         # a[2][2] *= -1
@@ -252,6 +266,7 @@ def test_mode():
         #RIS, aI = imu_set.get_noitom()
         #RMB = RMI.matmul(RIS).matmul(RSB)
         #aM = aI.mm(RMI.t())
+        
         start_time = time.perf_counter()        
         pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True)
         #pose, tran = net.forward()
@@ -271,9 +286,9 @@ def test_mode():
             ','.join(['%d' % v for v in cj]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
         # print(s)
-        # print("-----------------------------")
+        print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = ('192.168.201.198', 5005)
+        server_address = ('192.168.201.100', 5005)
         sock.sendto(s.encode('utf-8'), server_address)
 
         # 2차원 그래프 그리기
@@ -311,11 +326,14 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    UDPStationBroadcastReceiver().start()
-    time.sleep(2)
+    # UDPStationBroadcastReceiver().start()
+    # time.sleep(1)
     UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
+    
+
+    time.sleep(5)
 
 
     # time.sleep(1)
@@ -364,10 +382,10 @@ if __name__ == '__main__':
     while not test:
         
         # print(1111111111)
-        # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
-        #     # print("121212121")
-        #     re_tpose = True
-        #     continue
+        if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
+            # print("121212121")
+            re_tpose = True
+            continue
         
         # # print("121212121")
         if re_tpose:
@@ -383,57 +401,8 @@ if __name__ == '__main__':
         #     # data = {'RMI': RMI, 'RSB': RSB, 'aM': [], 'RMB': []}
             re_tpose = False
         
-        # clock.tick(70)
-        # print("111111111111111")
-        # if i_test == 9999999999999999999999999999999999999999999999999999:
 
-        #     plt.figure()
-        #     plt.subplot(4, 1, 1)
-        #     plt.plot(g_x, g_y1, marker='o', linestyle='-', label='X', color='r' )
-        #     plt.xlabel("time-step")
-        #     plt.ylabel("X")
-        #     plt.legend()
-        #     plt.subplot(4, 1, 2)
-        #     plt.plot(g_x, g_y2, marker='o', linestyle='-', label='Y', color='g')  
-        #     plt.xlabel("time-step")
-        #     plt.ylabel("Y")
-        #     plt.legend()
-        #     plt.subplot(4, 1, 3)
-        #     plt.plot(g_x, g_y3, marker='o', linestyle='-', label='Z', color='b')   
-        #     plt.xlabel("time-step")
-        #     plt.ylabel("Z")
-            
-        #     plt.subplot(4, 1, 4)
-        #     plt.plot(g_x, g_y4, marker='o', linestyle='-', label='Z', color='b')   
-        #     plt.xlabel("time-step")
-        #     plt.ylabel("S")
-        #     plt.legend()
-
-        #         # 그래프에 제목, 축 이름 설정
-        #     # plt.title("2D Graph of Two Arrays")
-        #     # plt.xlabel("X-axis")
-        #     # plt.ylabel("Y-axis")
-
-        #     # 범례 추가
-        #     plt.legend()
-
-        #     # 그래프 보여주기
-        #     plt.show()
-        #     # break;
-
-        # # clock.tick(60)
-        
-    # RMI, RSB = tpose_calibration_ipop()
-    
-        # 싱크조절
-        # now_time = time.perf_counter()
-        # if (now_time-start_time) * 1000 < 10:
-        #     continue
-        
-        # print((now_time-start_time) * 1000)
-        
-        # start_time = now_time
-        clock.tick(63)
+        clock.tick(59)
         try:
             q, a = imu_set.get_ipop()
             RMB = RMI.matmul(q).matmul(RSB)
@@ -451,7 +420,8 @@ if __name__ == '__main__':
         # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])   # calculate global free acceleration
         aM = a.mm(RMI.t())
 
-        
+        # q = rotation_matrix_to_quaternion(q)[5][0]
+        # print(q)
         
         # #가속도 그래프 확인용 (추후 삭제)
         g_x.append(i_test)
@@ -461,6 +431,8 @@ if __name__ == '__main__':
         g_y4.append(np.linalg.norm(np.array(a[5])))
         i_test += 1
 
+        # q = rotation_matrix_to_quaternion(RMB)[5][0]
+        # print(q)
         
         #RIS, aI = imu_set.get_noitom()
         #RMB = RMI.matmul(RIS).matmul(RSB)
@@ -472,6 +444,8 @@ if __name__ == '__main__':
         # print(execution_time)
         pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
         tran = tran.view(-1, 3)
+        
+        
         
         # tran = torch.zeros(1,3)
         

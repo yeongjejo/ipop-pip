@@ -38,9 +38,9 @@ class UDPServer(threading.Thread):
         self._running = True
         
 
-        port = 56775
+        # port = 56775
         # port = 56476
-        # port = 55001
+        port = 55000
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))
         station_info = StationInfo()
@@ -52,7 +52,7 @@ class UDPServer(threading.Thread):
             # 데이터 수신
             sock.recv_into(buffer)
             
-            # print("1111111111")
+            # print("데이터 수신 확인")
             
             # 데이터 확인
             receive_station_byte_data = buffer
@@ -73,13 +73,13 @@ class UDPServer(threading.Thread):
             # 0이면 t-pose 진행중
             # 1이면 동작 실행
             # print("티포즈 데이터 확인 : " + str(receive_station_byte_data[904] & 0xFF))
-            # if receive_station_byte_data[904] & 0xFF == 0:
-            #     DataManager().t_pose_set_end = False
-            #     print("Runing T-Pose...")
-            #     continue
-            # elif DataManager().t_pose_set_end == False or DataManager().t_pose_set_end == None:
-            #     print("End T-Pose!!!")
-            #     DataManager().t_pose_set_end = True
+            if receive_station_byte_data[904] & 0xFF == 0:
+                DataManager().t_pose_set_end = False
+                print("Runing T-Pose...")
+                continue
+            elif DataManager().t_pose_set_end == False or DataManager().t_pose_set_end == None:
+                print("End T-Pose!!!")
+                DataManager().t_pose_set_end = True
             
 
 
@@ -108,9 +108,12 @@ class UDPServer(threading.Thread):
                 accX = self.cul_byte_data(sensor_byte_data[13:17])
                 accY = self.cul_byte_data(sensor_byte_data[17:21])
                 accZ = self.cul_byte_data(sensor_byte_data[21:25])
-                raw_acc = Acc(accX, accY, accZ)
-                # acc = Acc(accX, accY, accZ)
+                # raw_acc = Acc(accX, accY, accZ)
+                acc = Acc(accX, accY, accZ)
                 # acc.norm()
+            
+                # if sensor_part == SensorPart.WAIST:
+                #     print(f"x = {accX}, y = {accY}, z = {accZ}")
             
     
                 # 자기계 x, y, z 계산
@@ -126,6 +129,14 @@ class UDPServer(threading.Thread):
                 qY = self.cul_byte_data(sensor_byte_data[45:49])
                 qZ = self.cul_byte_data(sensor_byte_data[49:53])
                 quaternion = Quaternion(qW, qX, qY,  qZ)
+                
+                part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
+       
+                if sensor_part in part_sequence:
+                    print(f"part = {sensor_part} w = {qW} x = {qX}, y = {qY}, z = {qZ}")
+                
+                # if sensor_part == SensorPart.WAIST:
+                #     print(f"x = {qW}, y = {qX}, z = {qY}")
                 # quaternion.norm()
                 
                 # print(f"part = {sensor_part} \t\t w: {quaternion.w}  x: {quaternion.x} y: {quaternion.y} z: {quaternion.z}  // 가속도 x: {accX}  y: {accY}  z: {accZ}")
@@ -180,24 +191,48 @@ class UDPServer(threading.Thread):
                 # quaternion.norm()
   
   
-                qAccX = (-1.0) * 2.0 * (quaternion.x * quaternion.z - quaternion.w * quaternion.y)
-                qAccY = (-1.0) * 2.0 * (quaternion.y * quaternion.z + quaternion.w * quaternion.x)
-                qAccZ = 1.0 - 2.0 * (quaternion.w * quaternion.w + quaternion.z * quaternion.z)
+                # qAccX = (-1.0) * 2.0 * (quaternion.x * quaternion.z - quaternion.w * quaternion.y)
+                # qAccY = (-1.0) * 2.0 * (quaternion.y * quaternion.z + quaternion.w * quaternion.x)
+                # qAccZ = 1.0 - 2.0 * (quaternion.w * quaternion.w + quaternion.z * quaternion.z)
                 
-                qAcc = Acc(qAccX, qAccY, qAccZ)
-                # # qAcc.norm()
+                # qAcc = Acc(qAccX, qAccY, qAccZ)
+                # # # # qAcc.norm()
                 
-                acc = Acc(0.0, 0.0, 0.0)
-                acc.x = -raw_acc.x - qAcc.x
-                acc.y = -raw_acc.y - qAcc.y
-                acc.z = -raw_acc.z - qAcc.z                
-                # acc.norm()
+                # acc = Acc(0.0, 0.0, 0.0)
+                # acc.x = -raw_acc.x - qAcc.x
+                # acc.y = -raw_acc.y - qAcc.y
+                # acc.z = -raw_acc.z - qAcc.z                
+                # # acc.norm()
             
                 acc.x *= 9.8
                 acc.y *= 9.8
                 acc.z *= 9.8
+                
+                temps = acc.x
 
+                acc.x = acc.y
+                acc.y = acc.z
+                acc.z = temps
+                
+                # temps = acc.x
 
+                # acc.x = acc.z
+                # acc.z = -temps
+                # acc.y = temps
+                
+                
+                
+                
+                # temps = quaternion.x
+
+                # quaternion.x = quaternion.y
+                # quaternion.y = quaternion.z
+                # quaternion.z = temps
+                
+                
+                
+                
+                
                 # acc.norm()
 
                 # # # # 센서마다 축 보정
@@ -442,8 +477,9 @@ class UDPServer(threading.Thread):
                 
             
             # print("-----------------------------")
-            # if DataManager().t_pose_set_end:
-            DataManager().set_pickle_data()
+            if DataManager().t_pose_set_end:
+            # print(DataManager().sensor_data)
+                DataManager().set_pickle_data()
             
         sock.close()
 
@@ -546,4 +582,6 @@ class UDPServer(threading.Thread):
         
         }
         return coordinate_dict
+    
+    
     

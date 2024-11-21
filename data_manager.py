@@ -24,6 +24,7 @@ class DataManager():
 
     __acc_pickle_data = []
     __ori_pickle_data = []
+    __q_pickle_data = []
     test_acc = []
     test_q = []
     test_r = []
@@ -66,13 +67,20 @@ class DataManager():
         frame_ori_sensor_data = []
         frame_q_sensor_data = []
         for part in part_sequence:
-            frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
+            try:
+                frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
 
-            frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
-            frame_q_sensor_data.append([self.__sensor_data[part][3].w, self.__sensor_data[part][3].x, self.__sensor_data[part][3].y, self.__sensor_data[part][3].z])
-
+                frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
+                frame_q_sensor_data.append([self.__sensor_data[part][3].w, self.__sensor_data[part][3].x, self.__sensor_data[part][3].y, self.__sensor_data[part][3].z])
+            except:
+                print(part)
+                print(self.__sensor_data[part][1])
+                print(self.__sensor_data[part][3])
+                return
+                
         self.__acc_pickle_data.append(frame_acc_sensor_data)
         self.__ori_pickle_data.append(frame_ori_sensor_data)
+        self.__q_pickle_data.append(frame_q_sensor_data)
         self.test_acc = frame_acc_sensor_data
         self.test_q = frame_q_sensor_data
         self.test_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
@@ -96,6 +104,12 @@ class DataManager():
         self.__sensor_data = {part: [] for part in SensorPart}
         self.__acc_pickle_data = []
         self.__ori_pickle_data = []
+        self.__q_pickle_data = []
+        
+        
+    def get_log_data(self):
+        return self.__q_pickle_data, self.__acc_pickle_data
+        
 
 
  

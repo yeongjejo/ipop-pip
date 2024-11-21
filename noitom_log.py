@@ -28,7 +28,7 @@ def get_noitom_log_test_data():
     
 
     # CSV 파일 경로
-    file_path = '/home/user/Desktop/log/noitom/take001_chr01.csv'
+    file_path = '/home/user/Desktop/log/noitom/take007_chr01.csv'
     
     data_num = 0
     
@@ -109,7 +109,7 @@ def get_noitom_log_test_data():
         r.append(frame_r)
         acc.append(frame_acc)
         
-    print(acc)
+    return acc, r, ""
 
         
     

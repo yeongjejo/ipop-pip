@@ -1,14 +1,12 @@
 import torch
 import struct
 from pygame.time import Clock
-from log_test import rotation_matrix_to_quaternion
 from net import PIP
 import articulate as art
 import os
 from config import *
 #import keyboard
 from data_manager import DataManager
-from noitom_log import get_noitom_log_test_data
 from protocol.udp_server import UDPServer
 from protocol.udp_station_broadcast_receiver import UDPStationBroadcastReceiver
 import time
@@ -19,6 +17,7 @@ import math
 
 from protocol.xsesn_udp_server import XsensUDPServer
 
+from sensor.quaternion import Quaternion
 from sensor.sensor_part import SensorPart
 from xsens_log import get_xsens_log_test_data, test_num
 
@@ -120,7 +119,8 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+    
 
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
@@ -143,8 +143,16 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
         # RMI = torch.tensor([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]).mm(RSI)#아이팝 센서
         # RMI = torch.eye(3)
-        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-        RMI = torch.eye(3)
+        
+        
+        # ---------------------------------------------------------------------------------------------------
+        # RMI = torch.tensor([[0, -1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])
+        # RMI = torch.eye(3)
+         # ---------------------------------------------------------------------------------------------------
+        
+        
         
         # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
         # RMI = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, -1.]]).mm(RSI)
@@ -261,14 +269,15 @@ def test_mode():
         # a[3][2] *= -1
         # a[4][2] *= -1
         # a[5][2] *= -1
-        aM = a.mm(RMI.t())
+        aM = a
 
         #RIS, aI = imu_set.get_noitom()
         #RMB = RMI.matmul(RIS).matmul(RSB)
         #aM = aI.mm(RMI.t())
         
         start_time = time.perf_counter()        
-        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True)
+        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), q.view(1, 6, 3, 3).float(), return_grf=True)
+        # pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True)
         #pose, tran = net.forward()
         end_time = time.perf_counter()
         execution_time = (end_time-start_time) * 1000
@@ -286,7 +295,7 @@ def test_mode():
             ','.join(['%d' % v for v in cj]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
         # print(s)
-        print("-----------------------------")
+        # print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server_address = ('192.168.201.100', 5005)
         sock.sendto(s.encode('utf-8'), server_address)
@@ -326,29 +335,20 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    # UDPStationBroadcastReceiver().start()
-    # time.sleep(1)
+    UDPStationBroadcastReceiver().start()
+    time.sleep(1)
     UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
     
 
-    time.sleep(5)
+    # time.sleep(5)
+    
+    # 슬라임vr 리셋
+    # for part, value in DataManager().sensor_data.items():
+    #     raw_q = Quaternion(value[3].raw_q_w, value[3].raw_q_x, value[3].raw_q_y, value[3].raw_q_z)
+    #     value[5].reset_full(raw_q)
 
-
-    # time.sleep(1)
-    # os.makedirs(paths.temp_dir, exist_ok=True)
-    # os.makedirs(paths.live_record_dir, exist_ok=True)
-
-    # is_executable = False
-    #server_for_unity = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #server_for_unity.bind(('', 8888))
-    #server_for_unity.listen(1)
-    #print('Server start. Waiting for unity3d to connect.')
-    ##if paths.unity_file != '' and os.path.exists(paths.unity_file):
-    #    win32api.ShellExecute(0, 'open', os.path.abspath(paths.unity_file), '', '', 1)
-    #    is_executable = True
-    #conn, addr = server_for_unity.accept()
 
 
     test = False
@@ -361,12 +361,6 @@ if __name__ == '__main__':
 
     # print(DataManager().process_dipimu()[0])
 
-    g_x = []
-    g_y1 = []
-    g_y2 = []
-    g_y3 = []
-    g_y4 = []
-    
     # 실시간 센서 코드!!!!!!!!!!!!
 
     i_test = 0
@@ -382,10 +376,10 @@ if __name__ == '__main__':
     while not test:
         
         # print(1111111111)
-        if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
-            # print("121212121")
-            re_tpose = True
-            continue
+        # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
+        #     # print("121212121")
+        #     re_tpose = True
+        #     continue
         
         # # print("121212121")
         if re_tpose:
@@ -405,7 +399,7 @@ if __name__ == '__main__':
         clock.tick(59)
         try:
             q, a = imu_set.get_ipop()
-            RMB = RMI.matmul(q).matmul(RSB)
+            RMB = RMI.matmul(q)
             a = torch.tensor(a)
         except:
             print(RMI)
@@ -418,17 +412,21 @@ if __name__ == '__main__':
         # a = -torch.tensor(a) * 9.8                         # acceleration is reversed
         # a = -torch.tensor(a) * 9.8                         # acceleration is reversed
         # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])   # calculate global free acceleration
+        
+        # ----------------------------------------------------------------------------------------------------------------
         aM = a.mm(RMI.t())
+        # aM = a.mm(RMI.t())
+        # ----------------------------------------------------------------------------------------------------------------
+        
 
+        # print(np.linalg.det(RMB[0]))
+        
+        
         # q = rotation_matrix_to_quaternion(q)[5][0]
         # print(q)
         
         # #가속도 그래프 확인용 (추후 삭제)
-        g_x.append(i_test)
-        g_y1.append(a[5][0])
-        g_y2.append(a[5][1])
-        g_y3.append(a[5][2])
-        g_y4.append(np.linalg.norm(np.array(a[5])))
+
         i_test += 1
 
         # q = rotation_matrix_to_quaternion(RMB)[5][0]
@@ -457,7 +455,7 @@ if __name__ == '__main__':
             ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
             ','.join(['%d' % v for v in cj]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
-        # print(s)
+        print(s)
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server_address = ('192.168.201.100', 5005)

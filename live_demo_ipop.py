@@ -19,6 +19,7 @@ import math
 
 from protocol.xsesn_udp_server import XsensUDPServer
 
+from sensor.quaternion import Quaternion
 from sensor.sensor_part import SensorPart
 from xsens_log import get_xsens_log_test_data, test_num
 
@@ -126,42 +127,19 @@ def tpose_calibration_ipop_2024(test, imu_set):
 
     if test:
         # RMI = torch.eye(3)
-        # RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
-        # print(imu_set.get_ipop())
         RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-        
-        # RMI = torch.tensor([[0, 0, -1], [0, -1, 0], [-1, 0, 0.]]).mm(RSI)
-        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])
-        # RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]]).mm(RSI)
-        # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]])
-        # RMI = torch.eye(3)
-        # print(RMI)
-        # print('-'*30)
-        # RMI = torch.tensor(test_num(1)).mm(RSI)
-    else:
-        # RMI = torch.tensor([[0, 0, 1], [-1, 0, 0], [0, 1, 0.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
-        # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])#torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI) #torch.eye(3)
-        # RMI = torch.tensor([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]).mm(RSI)#아이팝 센서
-        # RMI = torch.eye(3)
-        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-        RMI = torch.eye(3)
-        
-        # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
-        # RMI = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, -1.]]).mm(RSI)
-        
-        # torch.save(RMI, os.path.join(paths.temp_dir, 'RMI.pt'))
-    # print(f'RMI.shape: {RMI.shape}\nRMI:\n{RMI}')
-    # if not test:
-    #     input('Stand straight in T-pose and press enter. The calibration will begin in 3 seconds')
-    #     time.sleep(3)
-    # # print('-----------------------')
 
+    else:
+        # RMI = torch.eye(3)
+        RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, 1, 0.]]).mm(RSI)
+        
+        
     RIS = imu_set.get_ipop()[0]
     
-    # print(RIS)
-    RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3
+    RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
 
-    # print(f'RSB.shape: {RSB.shape}\nRSB:\n{RSB}')
+    test = torch.eye(3).mm(RSB[0])
+    # print(np.linalg.det(test))
 
 
     return RMI, RSB
@@ -326,29 +304,11 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    # UDPStationBroadcastReceiver().start()
-    # time.sleep(1)
+    UDPStationBroadcastReceiver().start()
+    time.sleep(1)
     UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
-    
-
-    time.sleep(5)
-
-
-    # time.sleep(1)
-    # os.makedirs(paths.temp_dir, exist_ok=True)
-    # os.makedirs(paths.live_record_dir, exist_ok=True)
-
-    # is_executable = False
-    #server_for_unity = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #server_for_unity.bind(('', 8888))
-    #server_for_unity.listen(1)
-    #print('Server start. Waiting for unity3d to connect.')
-    ##if paths.unity_file != '' and os.path.exists(paths.unity_file):
-    #    win32api.ShellExecute(0, 'open', os.path.abspath(paths.unity_file), '', '', 1)
-    #    is_executable = True
-    #conn, addr = server_for_unity.accept()
 
 
     test = False
@@ -358,9 +318,6 @@ if __name__ == '__main__':
     
         # time.sleep(1000)
     
-
-    # print(DataManager().process_dipimu()[0])
-
     g_x = []
     g_y1 = []
     g_y2 = []
@@ -378,67 +335,103 @@ if __name__ == '__main__':
     start_time = 10000
     part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
     re_tpose = True
-    # print("00000000000000000000000")
+    
     while not test:
         
-        # print(1111111111)
-        if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
-            # print("121212121")
-            re_tpose = True
-            continue
+        # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
+        #     # print("121212121")
+        #     re_tpose = True
+        #     continue
         
-        # # print("121212121")
         if re_tpose:
             time.sleep(2)
                         
             imu_set = IMUSet(test)
             net = PIP()
-            # print("121212121")
             RMI, RSB = tpose_calibration_ipop_2024(test, imu_set)
-            #RMI, RSB = tpose_calibration_noitom()
             imu_set.clear()
             
-        #     # data = {'RMI': RMI, 'RSB': RSB, 'aM': [], 'RMB': []}
             re_tpose = False
         
 
         clock.tick(59)
-        try:
-            q, a = imu_set.get_ipop()
-            RMB = RMI.matmul(q).matmul(RSB)
-            a = torch.tensor(a)
-        except:
-            print(RMI)
-            print(RSB)
-            print(q)
-            print(a)
-            print("에러!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11")
-        # print(22222222222222222)
-        
-        # a = -torch.tensor(a) * 9.8                         # acceleration is reversed
-        # a = -torch.tensor(a) * 9.8                         # acceleration is reversed
-        # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])   # calculate global free acceleration
-        aM = a.mm(RMI.t())
+        q, a = imu_set.get_ipop()
+        RMB = RMI.matmul(q).matmul(RSB)
+        a = torch.tensor(a)
+        aM = a
 
-        # q = rotation_matrix_to_quaternion(q)[5][0]
-        # print(q)
+        # print(np.linalg.det(RMB[5].mm(torch.eye(3))))
         
-        # #가속도 그래프 확인용 (추후 삭제)
-        g_x.append(i_test)
-        g_y1.append(a[5][0])
-        g_y2.append(a[5][1])
-        g_y3.append(a[5][2])
-        g_y4.append(np.linalg.norm(np.array(a[5])))
-        i_test += 1
-
-        # q = rotation_matrix_to_quaternion(RMB)[5][0]
-        # print(q)
+        new_rmn = []        
+        # RMB = rotation_matrix_to_quaternion(RMB)
+        
+        for r in RMB:
+        #     r = Quaternion(r[0], -r[1], -r[2], -r[3])
+        #     r = r.quaternion_to_rotation_matrix()
+        # #     r = rotation_matrix_to_quaternion(r)
+            # print(r)
+        
+        #     r = torch.squeeze(r)
+        #     r = torch.eye(3).mm(r)
+            
+            # x축 반전
+            # testa = torch.tensor([[-1., 0., 0.],
+            #                     [0., 1., 0.],
+            #                     [0., 0., 1.]])
+            # r = testa.mm(r)
+            # r = torch.eye(3).mm(r)
+            
+        
+            # testa = torch.tensor([[1., 0., 0.],
+            #                     [0., 1., 0.],
+            #                     [0., 0., -1.]])
+            # r = testa.mm(r)
+            # r = torch.eye(3).mm(r)
+            
+            # # y-1
+            # testa = torch.tensor([[1., 0., 0.],
+            #                     [0., -1., 0.],
+            #                     [0., 0., 1.]])
+            # r = testa.mm(r)
+            # r = torch.eye(3).mm(r)
+            
+            # testa = torch.tensor([[1., 0., 0.],
+            #                 [0., 1., 0.],
+            #                 [0., 0., -1.]])
+            # r = testa.mm(r)
+            # r = torch.eye(3).mm(r)
+            
+            
+            # # # z-1
+            # testa = torch.tensor([[1., 0., 0.],
+            #                     [0., 1., 0.],
+            #                     [0., 0., -1.]])
+            # r = testa.mm(r)
+            # r = torch.eye(3).mm(r)
+            
+            # testa = torch.tensor([[1., 0., 0.],
+            #                 [0., -1., 0.],
+            #                 [0., 0., 1.]])
+            # r = testa.mm(r)
+            # r = torch.eye(3).mm(r)
+            
+            new_rmn.append(r)
+            
+            print(np.linalg.det(r))
+        #         #    print(r)
+        
+        # new_rmn = torch.tensor(new_rmn)
+        new_rmn = torch.squeeze(torch.stack(new_rmn))
+        # print(RMB)
+        # print('-------------')
+                
+                
         
         #RIS, aI = imu_set.get_noitom()
         #RMB = RMI.matmul(RIS).matmul(RSB)
         #aM = aI.mm(RMI.t())
         # start_time = time.perf_counter()        
-        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True)
+        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), new_rmn.view(1, 6, 3, 3).float(), return_grf=True)
         # end_time = time.perf_counter()
         # execution_time = (end_time-start_time) * 1000
         # print(execution_time)

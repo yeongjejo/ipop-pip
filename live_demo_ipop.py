@@ -120,6 +120,7 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
+    # print(imu_set.get_ipop()[0])
     RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
     
 
@@ -148,7 +149,7 @@ def tpose_calibration_ipop_2024(test, imu_set):
         
         # ---------------------------------------------------------------------------------------------------
         # RMI = torch.tensor([[0, -1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
         # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]])
         # RMI = torch.eye(3)
          # ---------------------------------------------------------------------------------------------------
@@ -156,7 +157,7 @@ def tpose_calibration_ipop_2024(test, imu_set):
         
         
         # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
-        # RMI = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, -1.]]).mm(RSI)
+        RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)
         
         # torch.save(RMI, os.path.join(paths.temp_dir, 'RMI.pt'))
     # print(f'RMI.shape: {RMI.shape}\nRMI:\n{RMI}')
@@ -338,7 +339,7 @@ def test_mode():
 if __name__ == '__main__':
     # UDPStationBroadcastReceiver().start()
     ResetClient().start()
-    # time.sleep(1)
+    time.sleep(2)
     # UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
@@ -367,8 +368,8 @@ if __name__ == '__main__':
 
     i_test = 0
     
-    imu_set = IMUSet(test)
-    net = PIP()
+    # imu_set = IMUSet(test)
+    # net = PIP()
     clock = Clock()
     RMI, RSB = [0, 0]
     start_time = 10000
@@ -388,7 +389,8 @@ if __name__ == '__main__':
             
             message = "new reset"  # 서버에서 처리할 메시지
             DataManager().ws.send(message)
-                        
+
+            print(111111111111111)
             
             time.sleep(3)
             
@@ -462,7 +464,7 @@ if __name__ == '__main__':
             ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
             ','.join(['%d' % v for v in cj]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
-        print(s)
+        # print(s)
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server_address = ('192.168.201.100', 5005)

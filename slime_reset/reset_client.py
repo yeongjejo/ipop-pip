@@ -55,11 +55,14 @@ class ResetClient(threading.Thread):
                 # print(f"{key}, {SensorPart(int(key))}")
                 gyro = Gyro(0,0,0)
                 mag = Gyro(0,0,0)
-                acc = Acc(value['eulerX'], value['eulerY'], value['eulerZ'])
+                # acc = Acc(value['eulerX'], value['eulerY'], value['eulerZ'])
+                acc = Acc(0, 0, 0)
                 quaternion = Quaternion(value['filterW'], value['filterX'], value['filterY'], value['filterZ'])
+                print(key, quaternion)
                 DataManager().sensor_data = [SensorPart(int(key)), [gyro, acc, mag, quaternion]]
-                print(DataManager().sensor_data)
-                
+                # print(DataManager().sensor_data)
+            
+            DataManager().set_pickle_data()
                 
             # print("------------")
         except json.JSONDecodeError as e:

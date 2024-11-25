@@ -126,8 +126,8 @@ def tpose_calibration_ipop_2024(test, imu_set):
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
     if test:
-        # RMI = torch.eye(3)
-        RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        RMI = torch.eye(3)
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
 
     else:
         RMI = torch.eye(3)

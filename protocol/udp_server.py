@@ -38,9 +38,9 @@ class UDPServer(threading.Thread):
         self._running = True
         
 
-        port = 56775
+        # port = 56775
         # port = 56476
-        # port = 55000
+        port = 55000
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))
         station_info = StationInfo()
@@ -110,10 +110,8 @@ class UDPServer(threading.Thread):
                 accZ = self.cul_byte_data(sensor_byte_data[21:25])
                 # raw_acc = Acc(accX, accY, accZ)
                 acc = Acc(accX, accY, accZ)
+                # acc = Acc(accY, accZ, accX)
                 # acc.norm()
-            
-                # if sensor_part == SensorPart.WAIST:
-                #     print(f"x = {accX}, y = {accY}, z = {accZ}")
             
     
                 # 자기계 x, y, z 계산
@@ -130,9 +128,19 @@ class UDPServer(threading.Thread):
                 qZ = self.cul_byte_data(sensor_byte_data[49:53])
                 quaternion = Quaternion(qW, qX, qY,  qZ)
                 
+                
+                # if sensor_part == SensorPart.WAIST:
+                #     print(f"x = {accX}, y = {accY}, z = {accZ}")
+                #     print(f"x = {qX}, y = {qY}, z = {qZ}")
+                #     print('=================')
+            
+                
                 part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
        
-
+                # if sensor_part in part_sequence:
+                #     print(f"x = {accX}, y = {accY}, z = {accZ}")
+                #     print(f"x = {qX}, y = {qY}, z = {qZ}")
+                #     print('=================')
                 # qAccX = (-1.0) * 2.0 * (quaternion.x * quaternion.z - quaternion.w * quaternion.y)
                 # qAccY = (-1.0) * 2.0 * (quaternion.y * quaternion.z + quaternion.w * quaternion.x)
                 # qAccZ = 1.0 - 2.0 * (quaternion.w * quaternion.w + quaternion.z * quaternion.z)
@@ -172,9 +180,9 @@ class UDPServer(threading.Thread):
                 
             
             # print("-----------------------------")
-            # if DataManager().t_pose_set_end:
+            if DataManager().t_pose_set_end:
             # print(DataManager().sensor_data)
-            DataManager().set_pickle_data()
+                DataManager().set_pickle_data()
             
         sock.close()
 

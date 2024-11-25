@@ -121,7 +121,7 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
 
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
@@ -130,8 +130,8 @@ def tpose_calibration_ipop_2024(test, imu_set):
         RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
 
     else:
-        # RMI = torch.eye(3)
-        RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, 1, 0.]]).mm(RSI)
+        RMI = torch.eye(3)
+        # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
         
         
     RIS = imu_set.get_ipop()[0]
@@ -304,8 +304,8 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    UDPStationBroadcastReceiver().start()
-    time.sleep(1)
+    # UDPStationBroadcastReceiver().start()
+    # time.sleep(1)
     UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
@@ -338,10 +338,10 @@ if __name__ == '__main__':
     
     while not test:
         
-        # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
-        #     # print("121212121")
-        #     re_tpose = True
-        #     continue
+        if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
+            # print("121212121")
+            re_tpose = True
+            continue
         
         if re_tpose:
             time.sleep(2)
@@ -361,77 +361,12 @@ if __name__ == '__main__':
         aM = a
 
         # print(np.linalg.det(RMB[5].mm(torch.eye(3))))
-        
-        new_rmn = []        
-        # RMB = rotation_matrix_to_quaternion(RMB)
-        
-        for r in RMB:
-        #     r = Quaternion(r[0], -r[1], -r[2], -r[3])
-        #     r = r.quaternion_to_rotation_matrix()
-        # #     r = rotation_matrix_to_quaternion(r)
-            # print(r)
-        
-        #     r = torch.squeeze(r)
-        #     r = torch.eye(3).mm(r)
-            
-            # x축 반전
-            # testa = torch.tensor([[-1., 0., 0.],
-            #                     [0., 1., 0.],
-            #                     [0., 0., 1.]])
-            # r = testa.mm(r)
-            # r = torch.eye(3).mm(r)
-            
-        
-            # testa = torch.tensor([[1., 0., 0.],
-            #                     [0., 1., 0.],
-            #                     [0., 0., -1.]])
-            # r = testa.mm(r)
-            # r = torch.eye(3).mm(r)
-            
-            # # y-1
-            # testa = torch.tensor([[1., 0., 0.],
-            #                     [0., -1., 0.],
-            #                     [0., 0., 1.]])
-            # r = testa.mm(r)
-            # r = torch.eye(3).mm(r)
-            
-            # testa = torch.tensor([[1., 0., 0.],
-            #                 [0., 1., 0.],
-            #                 [0., 0., -1.]])
-            # r = testa.mm(r)
-            # r = torch.eye(3).mm(r)
-            
-            
-            # # # z-1
-            # testa = torch.tensor([[1., 0., 0.],
-            #                     [0., 1., 0.],
-            #                     [0., 0., -1.]])
-            # r = testa.mm(r)
-            # r = torch.eye(3).mm(r)
-            
-            # testa = torch.tensor([[1., 0., 0.],
-            #                 [0., -1., 0.],
-            #                 [0., 0., 1.]])
-            # r = testa.mm(r)
-            # r = torch.eye(3).mm(r)
-            
-            new_rmn.append(r)
-            
-            print(np.linalg.det(r))
-        #         #    print(r)
-        
-        # new_rmn = torch.tensor(new_rmn)
-        new_rmn = torch.squeeze(torch.stack(new_rmn))
-        # print(RMB)
-        # print('-------------')
-                
-                
-        
+
         #RIS, aI = imu_set.get_noitom()
         #RMB = RMI.matmul(RIS).matmul(RSB)
         #aM = aI.mm(RMI.t())
         # start_time = time.perf_counter()        
-        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), new_rmn.view(1, 6, 3, 3).float(), return_grf=True)
+        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True)
         # end_time = time.perf_counter()
         # execution_time = (end_time-start_time) * 1000
         # print(execution_time)
@@ -450,7 +385,7 @@ if __name__ == '__main__':
             ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
             ','.join(['%d' % v for v in cj]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
-        # print(s)
+        print(s)
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         server_address = ('192.168.201.100', 5005)

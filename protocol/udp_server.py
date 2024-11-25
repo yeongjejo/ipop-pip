@@ -163,6 +163,8 @@ class UDPServer(threading.Thread):
                 # acc.z = acc.y
                 # acc.y = temps
                 
+                
+                
 
                 
                 # 센서 정보 저장

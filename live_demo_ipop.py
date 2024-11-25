@@ -19,6 +19,7 @@ from protocol.xsesn_udp_server import XsensUDPServer
 
 from sensor.quaternion import Quaternion
 from sensor.sensor_part import SensorPart
+from slime_reset.reset_client import ResetClient
 from xsens_log import get_xsens_log_test_data, test_num
 
 class IMUSet:
@@ -335,9 +336,10 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    UDPStationBroadcastReceiver().start()
-    time.sleep(1)
-    UDPServer().start()
+    # UDPStationBroadcastReceiver().start()
+    ResetClient().start()
+    # time.sleep(1)
+    # UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
     
@@ -383,8 +385,13 @@ if __name__ == '__main__':
         
         # # print("121212121")
         if re_tpose:
-            time.sleep(2)
+            
+            message = "new reset"  # 서버에서 처리할 메시지
+            DataManager().ws.send(message)
                         
+            
+            time.sleep(3)
+            
             imu_set = IMUSet(test)
             net = PIP()
             # print("121212121")
@@ -414,7 +421,7 @@ if __name__ == '__main__':
         # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])   # calculate global free acceleration
         
         # ----------------------------------------------------------------------------------------------------------------
-        aM = a.mm(RMI.t())
+        aM = a
         # aM = a.mm(RMI.t())
         # ----------------------------------------------------------------------------------------------------------------
         

@@ -30,6 +30,9 @@ class DataManager():
     test_r = []
     
     t_pose_set_end = None
+    
+    
+    ws = None
 
     # 싱글톤 설정
     def __new__(cls, *args, **kwargs):

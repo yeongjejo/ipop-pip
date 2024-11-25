@@ -44,7 +44,7 @@ class UDPStationBroadcastReceiver(threading.Thread):
 
                 # 포트 번호 (분할) 저장 (880 포트라고 가정)
                 # port_num = 56775  # 736포트
-                port_num = 56476  # 736포트
+                port_num = 56853  # 736포트
                 port6 = (port_num >> 8) & 0xFF
                 port7 = port_num & 0xFF
                 
@@ -74,7 +74,7 @@ class UDPStationBroadcastReceiver(threading.Thread):
             send_data[2] = (192) & 0xFF  # IP 주소
             send_data[3] = (168) & 0xFF
             send_data[4] = (201) & 0xFF
-            send_data[5] = (153) & 0xFF
+            send_data[5] = (141) & 0xFF
             send_data[6] = port6  # 포트 번호
             send_data[7] = port7
             send_data[8] = 0xFB

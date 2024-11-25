@@ -39,7 +39,7 @@ class UDPServer(threading.Thread):
         
 
         # port = 56775
-        port = 56476
+        port = 56853
         # port = 55000
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))

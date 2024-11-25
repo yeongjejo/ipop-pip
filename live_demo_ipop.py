@@ -6,22 +6,14 @@ from net import PIP
 import articulate as art
 import os
 from config import *
-#import keyboard
 from data_manager import DataManager
-from noitom_log import get_noitom_log_test_data
 from protocol.udp_server import UDPServer
 from protocol.udp_station_broadcast_receiver import UDPStationBroadcastReceiver
 import time
 import socket
 import numpy as np
-import matplotlib.pyplot as plt
-import math
 
-from protocol.xsesn_udp_server import XsensUDPServer
-
-from sensor.quaternion import Quaternion
 from sensor.sensor_part import SensorPart
-from xsens_log import get_xsens_log_test_data, test_num
 
 class IMUSet:
     g = 9.8
@@ -158,8 +150,8 @@ if __name__ == '__main__':
 
     test = False
     
-    if test:
-        test_mode()
+    # if test:
+        # test_mode()
     
         # time.sleep(1000)
     
@@ -250,15 +242,13 @@ if __name__ == '__main__':
         s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
             ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
             ','.join(['%d' % v for v in cj]) + '#' + \
-            ','.join(['%g' % v for v in test_hand_q]) + '#' + \
-            ','.join(['%g' % v for v in DataManager().test_finger]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
         print(','.join(['%g' % v for v in test_hand_q]) + '#')
         
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # server_address = ('192.168.201.100', 5005)
-        server_address = ('192.168.201.201', 50001)
+        server_address = ('192.168.201.109', 5005)
         sock.sendto(s.encode('utf-8'), server_address)
         
         

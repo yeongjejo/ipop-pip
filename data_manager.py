@@ -1,4 +1,5 @@
 import pickle
+import time
 
 import torch
 
@@ -28,6 +29,8 @@ class DataManager():
     test_acc = []
     test_q = []
     test_r = []
+    
+    check = True
     
     t_pose_set_end = None
 
@@ -62,28 +65,30 @@ class DataManager():
 
     # 7, 8, 11, 12, 0, 2
     def set_pickle_data(self):
-        part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
-        frame_acc_sensor_data = []
-        frame_ori_sensor_data = []
-        frame_q_sensor_data = []
-        for part in part_sequence:
-            try:
-                frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
+        if self.check:
+        
+            part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
+            frame_acc_sensor_data = []
+            frame_ori_sensor_data = []
+            frame_q_sensor_data = []
+            for part in part_sequence:
+                try:
+                    frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
 
-                frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
-                frame_q_sensor_data.append([self.__sensor_data[part][3].w, self.__sensor_data[part][3].x, self.__sensor_data[part][3].y, self.__sensor_data[part][3].z])
-            except:
-                print(part)
-                print(self.__sensor_data[part][1])
-                print(self.__sensor_data[part][3])
-                return
-                
-        self.__acc_pickle_data.append(frame_acc_sensor_data)
-        self.__ori_pickle_data.append(frame_ori_sensor_data)
-        self.__q_pickle_data.append(frame_q_sensor_data)
-        self.test_acc = frame_acc_sensor_data
-        self.test_q = frame_q_sensor_data
-        self.test_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
+                    frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
+                    frame_q_sensor_data.append([self.__sensor_data[part][3].w, self.__sensor_data[part][3].x, self.__sensor_data[part][3].y, self.__sensor_data[part][3].z])
+                except:
+                    print(part)
+                    print(self.__sensor_data[part][1])
+                    print(self.__sensor_data[part][3])
+                    return
+                    
+            self.__acc_pickle_data.append(frame_acc_sensor_data)
+            self.__ori_pickle_data.append(frame_ori_sensor_data)
+            self.__q_pickle_data.append(frame_q_sensor_data)
+            self.test_acc = frame_acc_sensor_data
+            self.test_q = frame_q_sensor_data
+            self.test_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
         # print(self.test_r)
     
 
@@ -108,7 +113,12 @@ class DataManager():
         
         
     def get_log_data(self):
-        return self.__q_pickle_data, self.__acc_pickle_data
+        self.check = False
+        time.sleep(2)
+        returnData1 = self.__q_pickle_data
+        returnData2 = self.__acc_pickle_data
+        self.check = True
+        return returnData1, returnData2
         
 
 

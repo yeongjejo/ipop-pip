@@ -38,9 +38,9 @@ class UDPServer(threading.Thread):
         self._running = True
         
 
-        # port = 56775
+        port = 56775
         # port = 56476
-        port = 55000
+        # port = 55000
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))
         station_info = StationInfo()
@@ -73,13 +73,13 @@ class UDPServer(threading.Thread):
             # 0이면 t-pose 진행중
             # 1이면 동작 실행
             # print("티포즈 데이터 확인 : " + str(receive_station_byte_data[904] & 0xFF))
-            if receive_station_byte_data[904] & 0xFF == 0:
-                DataManager().t_pose_set_end = False
-                print("Runing T-Pose...")
-                continue
-            elif DataManager().t_pose_set_end == False or DataManager().t_pose_set_end == None:
-                print("End T-Pose!!!")
-                DataManager().t_pose_set_end = True
+            # if receive_station_byte_data[904] & 0xFF == 0:
+            #     DataManager().t_pose_set_end = False
+            #     print("Runing T-Pose...")
+            #     continue
+            # elif DataManager().t_pose_set_end == False or DataManager().t_pose_set_end == None:
+            #     print("End T-Pose!!!")
+            #     DataManager().t_pose_set_end = True
             
 
 
@@ -108,7 +108,7 @@ class UDPServer(threading.Thread):
                 accX = self.cul_byte_data(sensor_byte_data[13:17])
                 accY = self.cul_byte_data(sensor_byte_data[17:21])
                 accZ = self.cul_byte_data(sensor_byte_data[21:25])
-                # raw_acc = Acc(accX, accY, accZ)
+                raw_acc = Acc(accX, accY, accZ)
                 acc = Acc(accX, accY, accZ)
                 # acc = Acc(accY, accZ, accX)
                 # acc.norm()
@@ -155,10 +155,12 @@ class UDPServer(threading.Thread):
                 # acc.z = -raw_acc.z - qAcc.z 
             
             
-                acc.x *= 9.8
-                acc.y *= 9.8
-                acc.z *= 9.8
+                # acc.x = acc.x * 9.8
+                # acc.y = acc.y * 9.8
+                # acc.z = acc.z * 9.8
                 
+                
+                # print(quaternion)
                 # temps = acc.x
 
                 # acc.x = acc.y
@@ -180,9 +182,9 @@ class UDPServer(threading.Thread):
                 
             
             # print("-----------------------------")
-            if DataManager().t_pose_set_end:
+            # if DataManager().t_pose_set_end:
             # print(DataManager().sensor_data)
-                DataManager().set_pickle_data()
+            DataManager().set_pickle_data()
             
         sock.close()
 

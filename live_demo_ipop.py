@@ -81,6 +81,8 @@ class IMUSet:
         q = DataManager().test_q
         r = DataManager().test_r
         a = DataManager().test_acc
+        a = -torch.tensor(a) * 9.8                        # acceleration is reversed
+        a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])  
         # a = -torch.tensor(a) / 1000 * 9.8  # acceleration is reversed
         # a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])  # calculate global free acceleration
 
@@ -121,7 +123,7 @@ def tpose_calibration_ipop_2023():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    RSI = imu_set.get_ipop()[0][0].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
 
     # print(f'RSI.shape: {RSI.shape}\nRSI:\n{RSI}')
 
@@ -130,15 +132,17 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
 
     else:
-        RMI = torch.eye(3)
-        # RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+        # RMI = torch.eye(3)
+        RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+        
+        # RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]]).mm(RSI)
         
         
     RIS = imu_set.get_ipop()[0]
     
     RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
 
-    test = torch.eye(3).mm(RSB[0])
+    # test = torch.eye(3).mm(RSB[0])
     # print(np.linalg.det(test))
 
 
@@ -215,6 +219,7 @@ def test_mode():
             # print(RMI)
             
         RMB = RMI.matmul(q).matmul(RSB)
+        # RMB = RMI.matmul(q)
         # if i==309:
         #     raw_qs = rotation_matrix_to_quaternion(RMB)
         #     part_str = ["왼팔", "오른팔", "왼다리", "오른다리", "머리", "허리"]
@@ -304,8 +309,8 @@ def test_mode():
 
 
 if __name__ == '__main__':
-    # UDPStationBroadcastReceiver().start()
-    # time.sleep(1)
+    UDPStationBroadcastReceiver().start()
+    time.sleep(1)
     UDPServer().start()
     # XsensUDPServer().start()
     # time.sleep(99999)
@@ -338,10 +343,10 @@ if __name__ == '__main__':
     
     while not test:
         
-        if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
-            # print("121212121")
-            re_tpose = True
-            continue
+        # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
+        #     # print("121212121")
+        #     re_tpose = True
+        #     continue
         
         if re_tpose:
             time.sleep(2)
@@ -357,8 +362,8 @@ if __name__ == '__main__':
         clock.tick(59)
         q, a = imu_set.get_ipop()
         RMB = RMI.matmul(q).matmul(RSB)
-        a = torch.tensor(a)
-        aM = a
+        # a = torch.tensor(a)
+        aM = a.mm(RMI.t())
 
         # print(np.linalg.det(RMB[5].mm(torch.eye(3))))
 

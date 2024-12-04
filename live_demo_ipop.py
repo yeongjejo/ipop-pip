@@ -60,27 +60,12 @@ class IMUSet:
             print('[warning] no imu data received for 3 seconds')
 
     def get_ipop(self):
-        if self.test:
-            test_a_list, test_q_list, _ = DataManager().process_dipimu()
-            
-            # test_a_list, test_q_list, _ = get_xsens_log_test_data()
-
-            q = test_q_list[self.test_i]
-            a = test_a_list[self.test_i]
-            
-            
-            self.test_i += 0
-            
-            # print("1"*90)
-            # a = -torch.tensor(a) / 1000 * 9.8                        # acceleration is reversed
-            # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])   # calculate global free acceleration
-
-            
-            return q, a
 
         q = DataManager().test_q
         r = DataManager().test_r
         a = DataManager().test_acc
+        hand = DataManager().test_hand
+        
         a = -torch.tensor(a) * 9.8                        # acceleration is reversed
         a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])  
         # a = -torch.tensor(a) / 1000 * 9.8  # acceleration is reversed
@@ -88,9 +73,10 @@ class IMUSet:
 
         # print(q)
         
+        # print(hand[2:])
         
 	
-        return r, a
+        return r, a, hand
 
 
 
@@ -135,178 +121,32 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # RMI = torch.eye(3)
         RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
         
+
+        # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+        
+        # RMI = torch.tensor([[0, 0, 1], [1, 0, 0], [0, 1, 0.]]).mm(RSI)
+        
+        
         # RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]]).mm(RSI)
         
         
-    RIS = imu_set.get_ipop()[0]
+    RIS, _, handRIS = imu_set.get_ipop()
     
     RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
+    
+    
+    RSB_hand = RMI.matmul(handRIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
+    
 
     # test = torch.eye(3).mm(RSB[0])
     # print(np.linalg.det(test))
 
 
-    return RMI, RSB
+    return RMI, RSB, RSB_hand
 
 
   
   
-def test_mode():
-    g_x = []
-    g_y1 = []
-    g_y2 = []
-    g_y3 = []
-    g_y4 = []
-    
-    # 실시간 센서 코드!!!!!!!!!!!!
-
-    i_test = 0
-    
-    imu_set = IMUSet(True)
-    net = PIP()
-    # print("121212121")
-    RMI, RSB = tpose_calibration_ipop_2024(True, imu_set)
-    #RMI, RSB = tpose_calibration_noitom()
-    imu_set.clear()
-    clock = Clock()
-    start_time = 10000
-    # 테스트 코드!!!!!!!!!!!!
-    # test_a_list, test_q_list, pose_gt = get_xsens_log_test_data()
-    # test_a_list, test_q_list, pose_gt = get_noitom_log_test_data()
-    test_a_list, test_q_list, pose_gt = DataManager().process_dipimu()
-    
-    # print(test_a_list[309])
-    
-    # print(test_q_list[309])
-    
-    # for i in range(len(test_q_list[:600])):
-    for i in range(len(test_q_list[:])):
-        # clock.tick(800)
-        # time.sleep(0.05)
-    # for i in range(20):
-        # clock.tick(1000)
-        # time.sleep(0.01)
-        q = test_q_list[i]
-        a = test_a_list[i]
-        
-        # print(q)
-
-        # p = pose_gt[i]
-        
-        # print(a)
-
-        g_x.append(i)
-        # g_y.append(np.linalg.norm(np.array(a[1])))
-        g_y1.append(a[5][0])
-        g_y2.append(a[5][1])
-        g_y3.append(a[5][2])
-        g_y4.append(np.linalg.norm(np.array(a[1])))
-        
-        # if i==309:
-        #     raw_qs = rotation_matrix_to_quaternion(q)
-        #     part_str = ["왼팔", "오른팔", "왼다리", "오른다리", "머리", "허리"]
-        #     index = 0
-        #     for raw_q in raw_qs:
-        #         qAccX = (-1.0) * 2.0 * (raw_q[1] * raw_q[3] - raw_q[0] * raw_q[2])
-        #         qAccY = (-1.0) * 2.0 * (raw_q[2] * raw_q[3] + raw_q[0]* raw_q[1])
-        #         qAccZ = 1.0 - 2.0 * (raw_q[0] * raw_q[0] + raw_q[3] * raw_q[3])
-        #         print(f"RMB 계산전 {part_str[index]} 쿼터니언 가속도 x:{qAccX} y:{qAccY} z:{qAccZ}")
-        #         index+=1
-            
-        #     print()
-            # print(art.math.rotation_matrix_to_euler_angle(q[0]) * 180 / math.pi)
-            # print(RSB)
-            # print(RMI)
-            
-        RMB = RMI.matmul(q).matmul(RSB)
-        # RMB = RMI.matmul(q)
-        # if i==309:
-        #     raw_qs = rotation_matrix_to_quaternion(RMB)
-        #     part_str = ["왼팔", "오른팔", "왼다리", "오른다리", "머리", "허리"]
-        #     index = 0
-        #     for raw_q in raw_qs:
-        #         qAccX = (-1.0) * 2.0 * (raw_q[1] * raw_q[3] - raw_q[0] * raw_q[2])
-        #         qAccY = (-1.0) * 2.0 * (raw_q[2] * raw_q[3] + raw_q[0]* raw_q[1])
-        #         qAccZ = 1.0 - 2.0 * (raw_q[0] * raw_q[0] + raw_q[3] * raw_q[3])
-        #         print(f"RMB 계산후 {part_str[index]} 쿼터니언 가속도 x:{qAccX} y:{qAccY} z:{qAccZ}")
-                
-        #         index+=1
-        #     print("+"*30)
-        a = torch.tensor(a)
-        
-        # a = -torch.tensor(a) / 1000 * 9.8                         # acceleration is reversed
-        # a = q.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])
-        
-        
-        # a[0][2] *= -1
-        # a[1][2] *= -1
-        # a[2][2] *= -1
-        # a[3][2] *= -1
-        # a[4][2] *= -1
-        # a[5][2] *= -1
-        aM = a.mm(RMI.t())
-
-        #RIS, aI = imu_set.get_noitom()
-        #RMB = RMI.matmul(RIS).matmul(RSB)
-        #aM = aI.mm(RMI.t())
-        
-        start_time = time.perf_counter()        
-        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True)
-        #pose, tran = net.forward()
-        end_time = time.perf_counter()
-        execution_time = (end_time-start_time) * 1000
-        pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
-        tran = tran.view(-1, 3)
-
-
-        # tran = torch.zeros(1,3)
-
-        # grf *= 1000.0
-            
-        # send motion to Unity
-        s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
-            ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
-            ','.join(['%d' % v for v in cj]) + '#' + \
-            (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
-        # print(s)
-        print("-----------------------------")
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = ('192.168.201.100', 5005)
-        sock.sendto(s.encode('utf-8'), server_address)
-
-        # 2차원 그래프 그리기
-    #plt.plot(g_x, g_y, marker='o', linestyle='-', color='b', label="Data 1")
-    
-    # plt.figure()
-    # plt.subplot(4, 1, 1)
-    # plt.plot(g_x, g_y1, marker='o', linestyle='-', label='X', color='r' )
-    # plt.xlabel("time-step")
-    # plt.ylabel("X")
-    # plt.legend()
-    # plt.subplot(4, 1, 2)
-    # plt.plot(g_x, g_y2, marker='o', linestyle='-', label='Y', color='g')  
-    # plt.xlabel("time-step")
-    # plt.ylabel("Y")
-    # plt.legend()
-    # plt.subplot(4, 1, 3)
-    # plt.plot(g_x, g_y3, marker='o', linestyle='-', label='Z', color='b')
-    # # 그래프에 제목, 축 이름 설정
-    # plt.xlabel("time-step")
-    # plt.ylabel("Z")
-    # # 범례 추가
-    # plt.legend()
-    # plt.subplot(4, 1, 4)
-    # plt.plot(g_x, g_y4, marker='o', linestyle='-', label='Z', color='b')
-    # # 그래프에 제목, 축 이름 설정
-    # plt.xlabel("time-step")
-    # plt.ylabel("S")
-    # # 범례 추가
-    # plt.legend()
-
-    # # 그래프 보여주기
-    # plt.show()
-
-
 
 if __name__ == '__main__':
     UDPStationBroadcastReceiver().start()
@@ -353,15 +193,35 @@ if __name__ == '__main__':
                         
             imu_set = IMUSet(test)
             net = PIP()
-            RMI, RSB = tpose_calibration_ipop_2024(test, imu_set)
+            RMI, RSB, RSB_hand = tpose_calibration_ipop_2024(test, imu_set)
             imu_set.clear()
             
             re_tpose = False
         
 
         clock.tick(59)
-        q, a = imu_set.get_ipop()
+        q, a, hand_q = imu_set.get_ipop()
         RMB = RMI.matmul(q).matmul(RSB)
+        RMB_hand = RMI.matmul(hand_q).matmul(RSB_hand)
+        
+        # print(rotation_matrix_to_quaternion(RMB_hand))
+        # print(RMB_hand.shape)
+        
+        
+        test_hand_q = [0, 0, 0, 0, 0, 0, 0, 0]
+        hand_r = rotation_matrix_to_quaternion(RMB_hand)
+        test_hand_q[0] = float(hand_r[6][0])
+        test_hand_q[1] = float(hand_r[6][1])
+        test_hand_q[2] = float(hand_r[6][2])
+        test_hand_q[3] = float(hand_r[6][3])
+        
+        test_hand_q[4] = float(hand_r[7][0])
+        test_hand_q[5] = float(hand_r[7][1])
+        test_hand_q[6] = float(hand_r[7][2])
+        test_hand_q[7] = float(hand_r[7][3])
+        
+        
+        # print('test_hand_q', test_hand_q)
         # a = torch.tensor(a)
         aM = a.mm(RMI.t())
 
@@ -371,6 +231,7 @@ if __name__ == '__main__':
         #RMB = RMI.matmul(RIS).matmul(RSB)
         #aM = aI.mm(RMI.t())
         # start_time = time.perf_counter()        
+        # print(test_hand_q)
         pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True)
         # end_time = time.perf_counter()
         # execution_time = (end_time-start_time) * 1000
@@ -389,11 +250,15 @@ if __name__ == '__main__':
         s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
             ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
             ','.join(['%d' % v for v in cj]) + '#' + \
+            ','.join(['%g' % v for v in test_hand_q]) + '#' + \
+            ','.join(['%g' % v for v in DataManager().test_finger]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
-        print(s)
+        print(','.join(['%g' % v for v in test_hand_q]) + '#')
+        
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        server_address = ('192.168.201.100', 5005)
+        # server_address = ('192.168.201.100', 5005)
+        server_address = ('192.168.201.201', 50001)
         sock.sendto(s.encode('utf-8'), server_address)
         
         

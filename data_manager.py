@@ -29,6 +29,14 @@ class DataManager():
     test_acc = []
     test_q = []
     test_r = []
+    test_hand = []
+    
+    
+    test_finger = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    
+    
+    test_hand_q = [0, 0, 0, 0, 0, 0, 0, 0]
+    hand_inv = {}
     
     check = True
     
@@ -67,12 +75,16 @@ class DataManager():
     def set_pickle_data(self):
         if self.check:
         
-            part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
+            part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST, SensorPart.LEFT_HAND, SensorPart.RIGHT_HAND]
             frame_acc_sensor_data = []
             frame_ori_sensor_data = []
+            frame_hand_sensor_data = []
             frame_q_sensor_data = []
             for part in part_sequence:
                 try:
+                    frame_hand_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
+                    if part == SensorPart.LEFT_HAND or part == SensorPart.RIGHT_HAND:
+                        continue
                     frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
 
                     frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
@@ -82,6 +94,8 @@ class DataManager():
                     print(self.__sensor_data[part][1])
                     print(self.__sensor_data[part][3])
                     return
+
+            
                     
             self.__acc_pickle_data.append(frame_acc_sensor_data)
             self.__ori_pickle_data.append(frame_ori_sensor_data)
@@ -89,6 +103,7 @@ class DataManager():
             self.test_acc = frame_acc_sensor_data
             self.test_q = frame_q_sensor_data
             self.test_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
+            self.test_hand = torch.squeeze(torch.stack(frame_hand_sensor_data))
         # print(self.test_r)
     
 

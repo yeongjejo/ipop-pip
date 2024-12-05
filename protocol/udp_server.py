@@ -137,7 +137,8 @@ class UDPServer(threading.Thread):
                 if sensor_part == SensorPart.LEFT_HAND:
                     # if sensor_part not in DataManager().hand_inv:
                     #     DataManager().hand_inv[sensor_part] = quaternion
-                    
+
+
                     # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
                     # print(DataManager().hand_inv[sensor_part])
                     # print(quaternion)
@@ -150,7 +151,7 @@ class UDPServer(threading.Thread):
                 elif sensor_part == SensorPart.RIGHT_HAND:
                     # if sensor_part not in DataManager().hand_inv:
                     #     DataManager().hand_inv[sensor_part] = quaternion
-                    
+
                     # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
                     DataManager().test_hand_q[4] = quaternion.w
                     DataManager().test_hand_q[5] = quaternion.x
@@ -207,7 +208,7 @@ class UDPServer(threading.Thread):
                 DataManager().test_finger[9] = r_finger_a
             
             
-            # print("손가락 확인", l_finger_a, l_finger_b, l_finger_c, l_finger_d, l_finger_e)
+            print("손가락 확인", l_finger_a, l_finger_b, l_finger_c, l_finger_d, l_finger_e)
             # print("손가락 확인", l_finger_a)
             # print("-----------------------------")
             # if DataManager().t_pose_set_end:

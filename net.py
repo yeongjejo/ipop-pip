@@ -1,3 +1,4 @@
+import smplx
 from torch.nn.utils.rnn import *
 import articulate as art
 from articulate.utils.torch import *
@@ -101,7 +102,7 @@ class PIP(torch.nn.Module):
         return pose_opt, tran_opt
 
     @torch.no_grad()
-    def forward_frame(self, glb_acc, glb_rot,return_grf=False):
+    def forward_frame(self, glb_acc, glb_rot, glb_axis, test_print, return_grf=False):
         r"""
         Forward. Currently only support 1 subject.
 
@@ -119,6 +120,68 @@ class PIP(torch.nn.Module):
 
         x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
         x = self.rnn2.linear2(x[0])
+
+        model_folder = r'C:\Users\USER\Desktop\smplx'
+        model_type = 'smpl'
+        gender = 'male'
+        use_face_contour = False
+        num_betas = 10
+        num_expression_coeffs = 10
+        ext = 'pkl'
+        # smplx.create(model_folder)
+        model = smplx.create(model_folder, model_type='smpl',
+                             gender='male', use_face_contour=use_face_contour,
+                             num_betas=num_betas,
+                             num_expression_coeffs=num_expression_coeffs,
+                             ext=ext,
+                             body_pose=glb_axis)
+
+        # print(model)
+        betas = torch.randn([1, model.num_betas], dtype=torch.float32)
+        expression = torch.randn(
+            [1, model.num_expression_coeffs], dtype=torch.float32)
+        _, test_pose = model(betas=betas, expression=expression,
+                             return_verts=True)
+
+        test_pose = test_pose.flatten()
+        test_pose = test_pose.unsqueeze(0)
+        test_pose = test_pose[0][:-3]
+        test_pose = test_pose.reshape(1, -1)
+
+        if test_print:
+            print('x', x)
+            print('수정전 test_pose', test_pose)
+
+        # 1차 수정
+        test_pose = test_pose[:, 3:]
+        last_value = x[0, -3].view(1, 1)
+        test_pose = torch.cat((test_pose, last_value), dim=1)
+        last_value = x[0, -2].view(1, 1)
+        test_pose = torch.cat((test_pose, last_value), dim=1)
+        last_value = x[0, -1].view(1, 1)
+        test_pose = torch.cat((test_pose, last_value), dim=1)
+
+        if test_print:
+            print('수정후 test_pose', test_pose)
+
+        # 2차 수정
+        x[0, 0:3] = test_pose[0, 0:3]
+        x[0, 3:6] = test_pose[0, 3:6]
+
+        # 어깨
+        x[0, 36:39] = test_pose[0, 45:48]
+        x[0, 39:42] = test_pose[0, 48:51]
+        x[0, 45:48] = test_pose[0, 36:39]
+        x[0, 48:51] = test_pose[0, 39:42]
+
+        # 발
+        # x[0, 9:12] = test_pose[0, 9:12]
+        # x[0, 12:15] = test_pose[0, 12:15]
+        # x[0, 18:21] = test_pose[0, 18:21]
+        # x[0, 21:24] = test_pose[0, 21:24]
+
+
+
         x = torch.cat([x, imu], dim=1)
 
         x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[2])

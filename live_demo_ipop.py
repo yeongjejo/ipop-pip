@@ -6,22 +6,13 @@ from net import PIP
 import articulate as art
 import os
 from config import *
-#import keyboard
 from data_manager import DataManager
-from noitom_log import get_noitom_log_test_data
 from protocol.udp_server import UDPServer
 from protocol.udp_station_broadcast_receiver import UDPStationBroadcastReceiver
 import time
 import socket
 import numpy as np
-import matplotlib.pyplot as plt
-import math
-
-from protocol.xsesn_udp_server import XsensUDPServer
-
-from sensor.quaternion import Quaternion
 from sensor.sensor_part import SensorPart
-from xsens_log import get_xsens_log_test_data, test_num
 
 class IMUSet:
     g = 9.8
@@ -64,6 +55,7 @@ class IMUSet:
         q = DataManager().test_q
         r = DataManager().test_r
         a = DataManager().test_acc
+        axis = DataManager().axis
         hand = DataManager().test_hand
         
         a = -torch.tensor(a) * 9.8                        # acceleration is reversed
@@ -76,7 +68,7 @@ class IMUSet:
         # print(hand[2:])
         
 	
-        return r, a, hand
+        return r, a, hand, axis
 
 
 
@@ -130,7 +122,7 @@ def tpose_calibration_ipop_2024(test, imu_set):
         # RMI = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]]).mm(RSI)
         
         
-    RIS, _, handRIS = imu_set.get_ipop()
+    RIS, _, handRIS, axisRIS = imu_set.get_ipop()
     
     RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
     
@@ -155,12 +147,6 @@ if __name__ == '__main__':
     # XsensUDPServer().start()
     # time.sleep(99999)
 
-
-    test = False
-    
-    if test:
-        test_mode()
-    
         # time.sleep(1000)
     
     g_x = []
@@ -170,7 +156,7 @@ if __name__ == '__main__':
     g_y4 = []
     
     # 실시간 센서 코드!!!!!!!!!!!!
-
+    test = False
     i_test = 0
     
     imu_set = IMUSet(test)
@@ -254,7 +240,7 @@ if __name__ == '__main__':
             ','.join(['%g' % v for v in DataManager().test_finger]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
         print(','.join(['%g' % v for v in test_hand_q]) + '#')
-        
+
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # server_address = ('192.168.201.100', 5005)

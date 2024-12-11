@@ -2,9 +2,10 @@ import threading
 import socket
 
 class UDPStationBroadcastReceiver(threading.Thread):
-    def __init__(self):
+    def __init__(self, port):
         super().__init__()
         self._running = True
+        self.port = port
 
     def stop(self):
         self._running = False  # 스레드 종료 플래그 설정
@@ -44,14 +45,15 @@ class UDPStationBroadcastReceiver(threading.Thread):
 
                 # 포트 번호 (분할) 저장 (880 포트라고 가정)
                 # port_num = 56775  # 736포트
-                port_num = 56853  # 736포트
+                port_num = self.port  # 736포트
                 port6 = (port_num >> 8) & 0xFF
                 port7 = port_num & 0xFF
-                
-                #print(ip_num)
 
                 # 채널 정보 저장
                 ch = data[8]
+
+
+                print(f"IP 번호: {ip_num}, 시리얼: {serial}, Port6: {port6}, Port7: {port7}, 채널: {ch}")
 
                 # 클라이언트에 대한 추가 작업 수행
                 if not udp_client_send_check:
@@ -74,7 +76,7 @@ class UDPStationBroadcastReceiver(threading.Thread):
             send_data[2] = (192) & 0xFF  # IP 주소
             send_data[3] = (168) & 0xFF
             send_data[4] = (201) & 0xFF
-            send_data[5] = (141) & 0xFF
+            send_data[5] = (104) & 0xFF
             send_data[6] = port6  # 포트 번호
             send_data[7] = port7
             send_data[8] = 0xFB

@@ -1,6 +1,8 @@
 import torch
 import struct
 from pygame.time import Clock
+from torch.nn.parallel.comm import broadcast
+
 from log_test import rotation_matrix_to_quaternion
 from net import PIP
 import articulate as art
@@ -53,10 +55,12 @@ def tpose_calibration_ipop_2024(imu_set):
   
   
 
-if __name__ == '__main__':
-    UDPStationBroadcastReceiver().start()
-    time.sleep(1)
-    UDPServer().start()
+def run_pip(udp_server_port, unity_ip, unity_port):
+
+    # UDPStationBroadcastReceiver(broadcast_port).start()
+    # print(1)
+    # time.sleep(1)
+    UDPServer(udp_server_port).start()
 
     # 실시간 센서 코드!!!!!!!!!!!!
     imu_set = IMUSet()
@@ -67,9 +71,9 @@ if __name__ == '__main__':
     
     while True:
         
-        if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
-            re_tpose = True
-            continue
+        # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
+        #     re_tpose = True
+        #     continue
         
         if re_tpose:
             time.sleep(2)
@@ -112,14 +116,72 @@ if __name__ == '__main__':
         s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
             ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
             ','.join(['%d' % v for v in cj]) + '#' + \
+            ','.join(['%g' % v for v in test_hand_q]) + '#' + \
+            ','.join(['%g' % v for v in DataManager().test_finger]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
         print(','.join(['%g' % v for v in test_hand_q]) + '#')
         
         #print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # server_address = ('192.168.201.100', 5005)
-        server_address = ('192.168.201.109', 5005)
+        server_address = (unity_ip, unity_port)
         sock.sendto(s.encode('utf-8'), server_address)
-        
 
+
+
+def test_udp_client(ip, port6, port7):
+    try:
+        # UDP 소켓 생성
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        # 송신할 데이터 설정
+        send_data = bytearray(10)
+        send_data[0] = 0xFA
+        send_data[1] = 0xEA
+        send_data[2] = (192) & 0xFF  # IP 주소
+        send_data[3] = (168) & 0xFF
+        send_data[4] = (201) & 0xFF
+        send_data[5] = (104) & 0xFF
+        send_data[6] = port6  # 포트 번호
+        send_data[7] = port7
+        send_data[8] = 0xFB
+        send_data[9] = 0xFF
+
+        # IP 주소와 포트 설정
+        server_address = (ip, 65000)
+        # 데이터 전송
+        sock.sendto(send_data, server_address)
+
+    except Exception as e:
+        print(f"Error2: {e}")
+
+
+if __name__ == '__main__':
+
+    processes = []
+    broadcast_port =  [56439, 56853, 56439, 56439]
+    broadcast_ip = ['192.168.201.152', '192.168.201.151']
+
+    for i in range(2):  # CPU 코어 수에 맞게 조정 가능
+        udp_server_port = 17171 + i # 17171, 17172, 17173, 17174
+        # udp_server_port = 56439 + i # 17171, 17172, 17173, 17174
+
+
+        # 브로드 캐스트 테스트용 (추후 삭제)
+        port6 = (broadcast_port[i] >> 8) & 0xFF
+        port7 = broadcast_port[i] & 0xFF
+        test_udp_client(broadcast_ip[i], port6, port7)
+
+
+        unity_ip = '192.168.201.155'
+        unity_port = 8888 + i # 8888, 8889, 8890, 8891
+        process = multiprocessing.Process(target=run_pip, args=(broadcast_port[i], unity_ip, unity_port))
+        processes.append(process)
+        process.start()
+
+    # 모든 프로세스가 종료될 때까지 대기
+    for process in processes:
+        process.join()
+
+    print('종료!!!!!!!!!!!!')
 

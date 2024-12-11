@@ -9,11 +9,6 @@ from sensor.quaternion import Quaternion
 import torch
 
 
-def cul_q_acc(quaternion):
-    qAccX = (-1.0) * 2.0 * (quaternion.x * quaternion.z - quaternion.w * quaternion.y)
-    qAccY = (-1.0) * 2.0 * (quaternion.y * quaternion.z + quaternion.w * quaternion.x)
-    qAccZ = 1.0 - 2.0 * (quaternion.w * quaternion.w + quaternion.z * quaternion.z)
-    return qAccX, qAccY, qAccZ
 
 def rotation_matrix_to_quaternion(r: torch.Tensor):
     r"""

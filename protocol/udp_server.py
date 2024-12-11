@@ -26,9 +26,10 @@ class UDPServer(threading.Thread):
     testY = 0
     testZ = 0
 
-    def __init__(self):
+    def __init__(self, port):
         super().__init__()
         self._running = True
+        self.port = port
 
     def stop(self):
         self._running = False  # 스레드 종료 플래그 설정
@@ -38,22 +39,20 @@ class UDPServer(threading.Thread):
         self._running = True
         
 
-        # port = 56775
-        port = 56853
-        # port = 55000
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind(('', port))
+        sock.bind(('', self.port))
         station_info = StationInfo()
         
         while self._running:
             # buffer = bytearray(907)  # 수신할 데이터 사이즈 설정
             buffer = bytearray(949)  # 수신할 데이터 사이즈 설정
-            
+
+            # print("데이터 수신 대기", self.port)
             # print("000000000000000000")
             # 데이터 수신
             sock.recv_into(buffer)
             
-            # print("데이터 수신 확인")
+            print("데이터 수신 확인", self.port)
             
             # 데이터 확인
             receive_station_byte_data = buffer
@@ -74,16 +73,16 @@ class UDPServer(threading.Thread):
             # 0이면 t-pose 진행중
             # 1이면 동작 실행
             # print("티포즈 데이터 확인 : " + str(receive_station_byte_data[904] & 0xFF))
-            # if receive_station_byte_data[904] & 0xFF == 0:
+            # if receive_station_byte_data[946] & 0xFF == 0:
             #     DataManager().t_pose_set_end = False
             #     print("Runing T-Pose...")
             #     continue
             # elif DataManager().t_pose_set_end == False or DataManager().t_pose_set_end == None:
             #     print("End T-Pose!!!")
             #     DataManager().t_pose_set_end = True
-            
 
-
+            # DataManager().sensor_data = [SensorPart.LEFT_HAND, [Gyro(0,0,0), Acc(0,0,0), Mag(0,0,0), Quaternion(1.0,0.0, 0.0, 0.0)]]
+            # DataManager().sensor_data = [SensorPart.RIGHT_HAND, [Gyro(0,0,0), Acc(0,0,0), Mag(0,0,0), Quaternion(1.0,0.0, 0.0, 0.0)]]
             while True:
                 # 모든센서 저장이 끝나면 종료
                 # if start_byte_num > 852:
@@ -129,53 +128,30 @@ class UDPServer(threading.Thread):
                 qY = self.cul_byte_data(sensor_byte_data[45:49])
                 qZ = self.cul_byte_data(sensor_byte_data[49:53])
                 quaternion = Quaternion(qW, qX, qY,  qZ)
-                
-                
-                
-                
+
                 
                 if sensor_part == SensorPart.LEFT_HAND:
-                    # if sensor_part not in DataManager().hand_inv:
-                    #     DataManager().hand_inv[sensor_part] = quaternion
-                    
-                    # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
-                    # print(DataManager().hand_inv[sensor_part])
-                    # print(quaternion)
-                    # print('-'*50)
                     DataManager().test_hand_q[0] = quaternion.w
                     DataManager().test_hand_q[1] = quaternion.x
                     DataManager().test_hand_q[2] = quaternion.y
                     DataManager().test_hand_q[3] = quaternion.z
                     # continue
                 elif sensor_part == SensorPart.RIGHT_HAND:
-                    # if sensor_part not in DataManager().hand_inv:
-                    #     DataManager().hand_inv[sensor_part] = quaternion
-                    
-                    # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
                     DataManager().test_hand_q[4] = quaternion.w
                     DataManager().test_hand_q[5] = quaternion.x
                     DataManager().test_hand_q[6] = quaternion.y
                     DataManager().test_hand_q[7] = quaternion.z
                     # continue
-                
-                
-                # qAccX = (-1.0) * 2.0 * (quaternion.x * quaternion.z - quaternion.w * quaternion.y)
-                # qAccY = (-1.0) * 2.0 * (quaternion.y * quaternion.z + quaternion.w * quaternion.x)
-                # qAccZ = 1.0 - 2.0 * (quaternion.w * quaternion.w + quaternion.z * quaternion.z)
-                
-            
-                # if sensor_part == SensorPart.LEFT_LOWER_ARM:
-                #     print(accX, accY, accZ)
-                #     print(qAccX, qAccY, qAccZ)
-                #     print('-'*50)
-                
-    
-            
+
+
                 
                 part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
 
                 if sensor_part == SensorPart.HEAD:
                     DataManager().sensor_data = [sensor_part, [gyro, Acc(0.0, 0.0, 0.0), mag, Quaternion(1.0, 0.0000000001, 0.0000000001,0.0000000001)]]
+
+                if qW == 0.0 or qX == 0.0 or qY == 0.0 or qZ == 0.0:
+                    continue
 
                 # 센서 정보 저장
                 DataManager().sensor_data = [sensor_part, [gyro, acc, mag, quaternion]]

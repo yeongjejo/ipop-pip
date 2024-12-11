@@ -82,6 +82,7 @@ class DataManager():
             frame_q_sensor_data = []
             for part in part_sequence:
                 try:
+                    print(part)
                     frame_hand_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
                     if part == SensorPart.LEFT_HAND or part == SensorPart.RIGHT_HAND:
                         continue

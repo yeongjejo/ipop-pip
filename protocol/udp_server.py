@@ -173,10 +173,10 @@ class UDPServer(threading.Thread):
             
                 
                 part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
-       
-            
 
-                
+                if sensor_part == SensorPart.HEAD:
+                    DataManager().sensor_data = [sensor_part, [gyro, Acc(0.0, 0.0, 0.0), mag, Quaternion(1.0, 0.0000000001, 0.0000000001,0.0000000001)]]
+
                 # 센서 정보 저장
                 DataManager().sensor_data = [sensor_part, [gyro, acc, mag, quaternion]]
             

@@ -1,3 +1,4 @@
+import smplx
 from torch.nn.utils.rnn import *
 import articulate as art
 from articulate.utils.torch import *
@@ -6,6 +7,7 @@ from utils import *
 from dynamics import PhysicsOptimizer
 from torch.nn.functional import relu
 import torch
+
 
 class PIP(torch.nn.Module):
     name = 'PIP'
@@ -47,6 +49,22 @@ class PIP(torch.nn.Module):
 
         self.load_state_dict(torch.load(paths.weights_file))
         self.eval()
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model_folder = '/home/user/Desktop/smplx'
+        use_face_contour = False
+        num_betas = 10
+        num_expression_coeffs = 10
+        ext = 'pkl'
+        # print('glb_axis', glb_axis)
+        # print('+'*50)
+        # smplx.create(model_folder)
+        self.smpl_model = smplx.create(model_folder, model_type='smpl',
+                                       gender='male', use_face_contour=use_face_contour,
+                                       num_betas=num_betas,
+                                       num_expression_coeffs=num_expression_coeffs,
+                                       ext=ext,
+                                       )
 
     def _reduced_glb_6d_to_full_local_mat(self, root_rotation, glb_reduced_pose):
         glb_reduced_pose = art.math.r6d_to_rotation_matrix(glb_reduced_pose).view(-1, joint_set.n_reduced, 3, 3)
@@ -101,7 +119,7 @@ class PIP(torch.nn.Module):
         return pose_opt, tran_opt
 
     @torch.no_grad()
-    def forward_frame(self, glb_acc, glb_rot,return_grf=False):
+    def forward_frame(self, glb_acc, glb_rot, glb_axis, return_grf=False):
         r"""
         Forward. Currently only support 1 subject.
 
@@ -113,26 +131,67 @@ class PIP(torch.nn.Module):
         """
         imu = normalize_and_concat(glb_acc, glb_rot)
 
-        x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
-        x = self.rnn1.linear2(x[0])
-        x = torch.cat([x, imu], dim=1)
+        # x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
+        # x = self.rnn1.linear2(x[0])
+        # x = torch.cat([x, imu], dim=1)
 
-        x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
-        x = self.rnn2.linear2(x[0])
-        x = torch.cat([x, imu], dim=1)
+        # x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
+        # x = self.rnn2.linear2(x[0])
 
-        x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[2])
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # model_folder = '/home/user/Desktop/smplx'
+        # use_face_contour = False
+        # num_betas = 10
+        # num_expression_coeffs = 10
+        # ext = 'pkl'
+        # # print('glb_axis', glb_axis)
+        # # print('+'*50)
+        # # smplx.create(model_folder)
+        # model = smplx.create(model_folder, model_type='smpl',
+        #                     gender='male', use_face_contour=use_face_contour,
+        #                     num_betas=num_betas,
+        #                     num_expression_coeffs=num_expression_coeffs,
+        #                     ext=ext,
+        #                     body_pose=glb_axis).to(device)
+
+        betas = torch.randn([1, self.smpl_model.num_betas], dtype=torch.float32)
+        expression = torch.randn([1, self.smpl_model.num_expression_coeffs], dtype=torch.float32)
+
+        _, test_pose = self.smpl_model(betas=betas, expression=expression, body_pose=glb_axis, return_verts=True)
+
+        test_pose = test_pose.flatten()
+        test_pose = test_pose.unsqueeze(0)
+        test_pose = test_pose[0][:-3]
+        test_pose = test_pose.reshape(1, -1)
+
+        # # 1차 수정
+        test_pose = test_pose[:, 3:]
+        # last_value = x[0, -3].view(1, 1)
+        last_value = torch.tensor([[0.0]])
+        test_pose = torch.cat((test_pose, last_value), dim=1)
+        # last_value = x[0, -2].view(1, 1)
+        test_pose = torch.cat((test_pose, last_value), dim=1)
+        # last_value = x[0, -1].view(1, 1)
+        test_pose = torch.cat((test_pose, last_value), dim=1)
+
+        # x = torch.cat([x, imu], dim=1)
+        x = torch.cat([test_pose, imu], dim=1)
+
+        x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0),
+                                               self.rnn_states[2])
         global_6d_pose = self.rnn3.linear2(x1[0])
 
-        x1, self.rnn_states[3] = self.rnn4.rnn(relu(self.rnn4.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[3])
+        x1, self.rnn_states[3] = self.rnn4.rnn(relu(self.rnn4.linear1(x), inplace=True).unsqueeze(0),
+                                               self.rnn_states[3])
         joint_velocity = self.rnn4.linear2(x1[0])
 
-        x1, self.rnn_states[4] = self.rnn5.rnn(relu(self.rnn5.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[4])
+        x1, self.rnn_states[4] = self.rnn5.rnn(relu(self.rnn5.linear1(x), inplace=True).unsqueeze(0),
+                                               self.rnn_states[4])
         contact = self.rnn5.linear2(x1[0])
 
         pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
         joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
-       
 
         # TODO: multiple people
-        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), return_grf=return_grf)
+        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(),
+                                                      return_grf=return_grf)

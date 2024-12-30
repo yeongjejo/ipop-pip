@@ -15,31 +15,26 @@ class DataManager():
     _instance = None  # 싱글톤 용도
     __check = True
     __sensor_data = {part: [] for part in SensorPart}
-    
-    
-    
+
     sensor_test_acc_data = {part: [999999999, 999999999, 999999999] for part in SensorPart}
-    
-    
-    __first_sensor_data_inv = {part: 0 for part in SensorPart} # inv용 센서 첫 데이터 저장
+
+    __first_sensor_data_inv = {part: 0 for part in SensorPart}  # inv용 센서 첫 데이터 저장
 
     __acc_pickle_data = []
     __ori_pickle_data = []
-    __q_pickle_data = []
     test_acc = []
-    test_q = []
     test_r = []
     test_hand = []
-    
-    
+
+    test_SMPL = []
+
     test_finger = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    
-    
+
     test_hand_q = [0, 0, 0, 0, 0, 0, 0, 0]
     hand_inv = {}
-    
+
     check = True
-    
+
     t_pose_set_end = None
 
     # 싱글톤 설정
@@ -47,15 +42,15 @@ class DataManager():
         if not cls._instance:
             cls._instance = super(DataManager, cls).__new__(cls)
         return cls._instance
-    
+
     @property
     def sensor_data(self):
         return self.__sensor_data
-    
+
     @property
     def first_sensor_data_inv(self):
         return self.__first_sensor_data_inv
-    
+
     def get_first_sensor_data_inv(self, key):
         return self.__first_sensor_data_inv[key]
 
@@ -74,39 +69,45 @@ class DataManager():
     # 7, 8, 11, 12, 0, 2
     def set_pickle_data(self):
         if self.check:
-        
-            part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST, SensorPart.LEFT_HAND, SensorPart.RIGHT_HAND]
+
+            part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
+                             SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST, SensorPart.LEFT_HAND,
+                             SensorPart.RIGHT_HAND]
+
+            smpl_part_sequence = [SensorPart.LEFT_FOOT, SensorPart.RIGHT_FOOT, SensorPart.LEFT_UPPER_LEG,
+                                  SensorPart.RIGHT_UPPER_LEG, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM]
+
             frame_acc_sensor_data = []
             frame_ori_sensor_data = []
             frame_hand_sensor_data = []
-            frame_q_sensor_data = []
+            frame_smpl_sensor_data = []
             for part in part_sequence:
                 try:
-                    print(part)
+                    frame_smpl_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
                     frame_hand_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
                     if part == SensorPart.LEFT_HAND or part == SensorPart.RIGHT_HAND:
                         continue
-                    frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
 
+                    frame_acc_sensor_data.append(
+                        [self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
                     frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
-                    frame_q_sensor_data.append([self.__sensor_data[part][3].w, self.__sensor_data[part][3].x, self.__sensor_data[part][3].y, self.__sensor_data[part][3].z])
                 except:
                     print(part)
                     print(self.__sensor_data[part][1])
                     print(self.__sensor_data[part][3])
                     return
 
-            
-                    
+            for part in smpl_part_sequence:
+                frame_smpl_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
+
             self.__acc_pickle_data.append(frame_acc_sensor_data)
             self.__ori_pickle_data.append(frame_ori_sensor_data)
-            self.__q_pickle_data.append(frame_q_sensor_data)
             self.test_acc = frame_acc_sensor_data
-            self.test_q = frame_q_sensor_data
             self.test_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
             self.test_hand = torch.squeeze(torch.stack(frame_hand_sensor_data))
+            self.test_SMPL = torch.squeeze(torch.stack(frame_smpl_sensor_data))
+
         # print(self.test_r)
-    
 
     def save_pickle_file(self):
         pickle_dic = {}
@@ -118,16 +119,13 @@ class DataManager():
         # pickle 파일로 저장
         with open('data.pkl', 'wb') as f:
             pickle.dump(pickle_dic, f)
-         
-
 
     def clear(self):
         self.__sensor_data = {part: [] for part in SensorPart}
         self.__acc_pickle_data = []
         self.__ori_pickle_data = []
         self.__q_pickle_data = []
-        
-        
+
     def get_log_data(self):
         self.check = False
         time.sleep(2)
@@ -135,12 +133,9 @@ class DataManager():
         returnData2 = self.__acc_pickle_data
         self.check = True
         return returnData1, returnData2
-        
 
-
- 
     def process_dipimu(self):
-        imu_mask = [7, 8, 11, 12, 0, 2] # 사용할 센서
+        imu_mask = [7, 8, 11, 12, 0, 2]  # 사용할 센서
         test_split = ['s_07']
         accs, oris, poses, trans = [], [], [], []
 
@@ -149,10 +144,8 @@ class DataManager():
                 path = os.path.join(paths.raw_dipimu_dir, subject_name, motion_name)
                 data = pickle.load(open(path, 'rb'), encoding='latin1')
                 acc = torch.from_numpy(data['imu_acc'][:, imu_mask]).float()
-                ori = torch.from_numpy(data['imu_ori'][:, imu_mask]).float() # 이건 아마 회전 행렬
+                ori = torch.from_numpy(data['imu_ori'][:, imu_mask]).float()  # 이건 아마 회전 행렬
                 pose = torch.from_numpy(data['gt']).float()
-
-
 
                 # fill nan with nearest neighbors
                 for _ in range(4):
@@ -170,7 +163,6 @@ class DataManager():
                         # num = int((len(ori)/2))
                         # t = ori[num:]
                         return acc.tolist(), ori, pose
-                    
 
                     accs.append(acc.clone())
                     # print(acc.clone())

@@ -21,9 +21,10 @@ class UDPServer(threading.Thread):
     testY = 0
     testZ = 0
 
-    def __init__(self):
+    def __init__(self, port):
         super().__init__()
         self._running = True
+        self.port = port
 
     def stop(self):
         self._running = False  # 스레드 종료 플래그 설정
@@ -33,7 +34,7 @@ class UDPServer(threading.Thread):
         self._running = True
 
         # port = 56775
-        port = 56439
+        port = self.port
         # port = 55000
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))
@@ -119,7 +120,18 @@ class UDPServer(threading.Thread):
                 qZ = self.cul_byte_data(sensor_byte_data[49:53])
                 quaternion = Quaternion(qW, qX, qY, qZ)
 
-                # print(sensor_part, acc, quaternion)
+                if qW == 0.0:
+                    continue
+
+                part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
+                                 SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST]
+
+                smpl_part_sequence = [SensorPart.LEFT_UPPER_LEG,
+                                      SensorPart.RIGHT_UPPER_LEG, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM]
+
+                # if sensor_part in part_sequence:
+                # if sensor_part == SensorPart.WAIST:
+                #     print(sensor_part, acc, quaternion)
 
                 if sensor_part == SensorPart.LEFT_HAND:
                     # if sensor_part not in DataManager().hand_inv:
@@ -188,7 +200,7 @@ class UDPServer(threading.Thread):
                 DataManager().test_finger[8] = r_finger_b
                 DataManager().test_finger[9] = r_finger_a
 
-            # print("손가락 확인", l_finger_a, l_finger_b, l_finger_c, l_finger_d, l_finger_e)
+                # print("손가락 확인", l_finger_a, l_finger_b, l_finger_c, l_finger_d, l_finger_e)
             # print("손가락 확인", l_finger_a)
             # print("-----------------------------")
             # if DataManager().t_pose_set_end:

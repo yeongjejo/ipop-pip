@@ -41,30 +41,33 @@ class PIP(torch.nn.Module):
                         num_rnn_layer=2,
                         dropout=0.4)
 
+        # print(3333)
         body_model = art.ParametricModel(paths.smpl_file)
         self.inverse_kinematics_R = body_model.inverse_kinematics_R
         self.forward_kinematics = body_model.forward_kinematics
         self.dynamics_optimizer = PhysicsOptimizer(debug=False)
         self.rnn_states = [None for _ in range(5)]
-
+        # print(2222)
         self.load_state_dict(torch.load(paths.weights_file))
         self.eval()
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model_folder = '.\smplx'
-        use_face_contour = False
-        num_betas = 10
-        num_expression_coeffs = 10
-        ext = 'pkl'
-        # print('glb_axis', glb_axis)
-        # print('+'*50)
-        # smplx.create(model_folder)
-        self.smpl_model = smplx.create(model_folder, model_type='smpl',
-                                       gender='male', use_face_contour=use_face_contour,
-                                       num_betas=num_betas,
-                                       num_expression_coeffs=num_expression_coeffs,
-                                       ext=ext,
-                                       )
+        # print(1111)
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # model_folder = '.\smplx'
+        # use_face_contour = False
+        # num_betas = 10
+        # num_expression_coeffs = 10
+        # ext = 'pkl'
+        # # print('glb_axis', glb_axis)
+        # # print('+'*50)
+        # # smplx.create(model_folder)
+        # self.smpl_model = smplx.create(model_folder, model_type='smpl',
+        #                                gender='male', use_face_contour=use_face_contour,
+        #                                num_betas=num_betas,
+        #                                num_expression_coeffs=num_expression_coeffs,
+        #                                ext=ext,
+        #                                )
+        #
 
     def _reduced_glb_6d_to_full_local_mat(self, root_rotation, glb_reduced_pose):
         glb_reduced_pose = art.math.r6d_to_rotation_matrix(glb_reduced_pose).view(-1, joint_set.n_reduced, 3, 3)

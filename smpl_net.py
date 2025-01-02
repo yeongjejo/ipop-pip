@@ -159,7 +159,7 @@ class SMPL_PIP(torch.nn.Module):
 
         _, test_pose = self.smpl_model(betas=betas, expression=expression, body_pose=glb_axis, return_verts=True)
 
-        print(test_pose)
+        # print(test_pose)
 
         test_pose = test_pose.flatten()
         test_pose = test_pose.unsqueeze(0)

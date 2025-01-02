@@ -1,10 +1,9 @@
 import torch
 from pygame.time import Clock
 from log_test import rotation_matrix_to_quaternion
-from net.net import PIP
 import articulate as art
 from data_manager import DataManager
-from net.smpl_net import SMPL_PIP
+from smpl_net import SMPL_PIP
 from protocol.udp_server import UDPServer
 from protocol.udp_station_broadcast_receiver import UDPStationBroadcastReceiver
 import time
@@ -51,7 +50,7 @@ def tpose_calibration_ipop_2024(test, imu_set):
 if __name__ == '__main__':
     UDPStationBroadcastReceiver().start()
     time.sleep(1)
-    UDPServer().start()
+    UDPServer(56233).start()
     # XsensUDPServer().start()
     # time.sleep(99999)
 
@@ -75,7 +74,7 @@ if __name__ == '__main__':
     part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
                      SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
     re_tpose = True
-
+    print(1)
     while not test:
 
         # if DataManager().t_pose_set_end == None or not DataManager().t_pose_set_end:
@@ -124,7 +123,7 @@ if __name__ == '__main__':
         # print(1)
         smpl_axis = art.math.rotation_matrix_to_axis_angle(smpl)
         # print(smpl_axis.shape)
-        axis_part = [51, 54, 9, 12, 42, 15, 57, 60, 18, 21, 0, 3, 45, 48]
+        axis_part = [51, 54, 9, 12, 42, 15, 57, 60, 0, 3, 45, 48]
         axis = tensor = torch.zeros(1, 69)
         for index, axis_num in enumerate(axis_part):
             axis[0][axis_num] = smpl_axis[index][0]
@@ -151,8 +150,8 @@ if __name__ == '__main__':
         start_time = time.time()
         pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), axis,
                                                 return_grf=True)
-        elapsed_time = time.time() - start_time
-        print(f"Function executed in: {elapsed_time:.4f} seconds")
+        # elapsed_time = time.time() - start_time
+        # print(f"Function executed in: {elapsed_time:.4f} seconds")
 
         pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
         tran = tran.view(-1, 3)
@@ -169,12 +168,12 @@ if __name__ == '__main__':
             ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
             ','.join(['%d' % v for v in cj]) + '#' + \
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
-        # print(','.join(['%g' % v for v in test_hand_q]) + '#')
+        print(','.join(['%g' % v for v in test_hand_q]) + '#')
 
         # print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # server_address = ('192.168.201.100', 5005)
-        server_address = ('192.168.0.91', 5005)
+        server_address = ('192.168.211.18', 8880)
         sock.sendto(s.encode('utf-8'), server_address)
 
 

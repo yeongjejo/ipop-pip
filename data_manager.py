@@ -74,8 +74,15 @@ class DataManager():
                              SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST, SensorPart.LEFT_HAND,
                              SensorPart.RIGHT_HAND]
 
-            smpl_part_sequence = [SensorPart.LEFT_FOOT, SensorPart.RIGHT_FOOT, SensorPart.LEFT_UPPER_LEG,
+            # smpl_part_sequence = [SensorPart.LEFT_FOOT, SensorPart.RIGHT_FOOT, SensorPart.LEFT_UPPER_LEG,
+            #                       SensorPart.RIGHT_UPPER_LEG, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM]
+
+
+            smpl_part_sequence = [SensorPart.LEFT_UPPER_LEG,
                                   SensorPart.RIGHT_UPPER_LEG, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM]
+
+
+
 
             frame_acc_sensor_data = []
             frame_ori_sensor_data = []
@@ -96,10 +103,15 @@ class DataManager():
                     print(self.__sensor_data[part][1])
                     print(self.__sensor_data[part][3])
                     return
+                try:
 
-            for part in smpl_part_sequence:
-                frame_smpl_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
-
+                    for part in smpl_part_sequence:
+                        frame_smpl_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
+                except:
+                    print(part)
+                    print(self.__sensor_data[part][1])
+                    print(self.__sensor_data[part][3])
+                    return
             self.__acc_pickle_data.append(frame_acc_sensor_data)
             self.__ori_pickle_data.append(frame_ori_sensor_data)
             self.test_acc = frame_acc_sensor_data

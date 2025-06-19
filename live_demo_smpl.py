@@ -35,20 +35,53 @@ class IMUSet:
 
         return r, a, hand, smpl
 
+def tpose_save_date():
+    return (torch.tensor([[[-7.3648e-01, -7.9436e-03,  6.7641e-01],
+         [-6.7631e-01,  2.9319e-02, -7.3603e-01],
+         [-1.3985e-02, -9.9954e-01, -2.6965e-02]],
+
+        [[-7.4230e-01,  3.2057e-01,  5.8841e-01],
+         [-6.2825e-01, -2.7592e-02, -7.7752e-01],
+         [-2.3302e-01, -9.4682e-01,  2.2188e-01]],
+
+        [[-7.9500e-01,  4.2707e-03,  6.0660e-01],
+         [-6.0661e-01, -7.8692e-03, -7.9496e-01],
+         [ 1.3784e-03, -9.9996e-01,  8.8466e-03]],
+
+        [[-9.4049e-01, -9.8291e-04,  3.3981e-01],
+         [-3.3982e-01,  3.1841e-03, -9.4049e-01],
+         [-1.5761e-04, -9.9999e-01, -3.3287e-03]],
+
+        [[-8.3413e-01,  1.5058e-02,  5.5136e-01],
+         [-5.5145e-01, -2.6919e-03, -8.3420e-01],
+         [-1.1078e-02, -9.9988e-01,  1.0549e-02]],
+
+        [[-7.5899e-01, -1.8951e-02,  6.5083e-01],
+         [-6.5111e-01,  2.3957e-02, -7.5861e-01],
+         [-1.2156e-03, -9.9953e-01, -3.0523e-02]]]), torch.tensor([[-4.0115e-03, -9.7296e-03, -2.9288e-02],
+        [-1.0550e-03, -1.4794e-02, -3.7202e+00],
+        [ 6.9018e-03, -1.1065e-02,  2.4224e-02],
+        [-1.3071e-03,  8.1621e-03, -2.7657e-05],
+        [ 5.2244e-03,  1.1515e-02, -1.3351e-02],
+        [-2.0017e-02,  3.9166e-03,  4.4919e-02]]))
+
 
 def tpose_calibration_ipop_2024(test, imu_set):
     RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
+    # RSI = tpose_save_date()[0][5].view(3, 3).t()
 
     RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+    # RMI = torch.tensor([[0, 0, 1], [0, 1, 0], [1, 0, 0.]]).mm(RSI)
 
     RIS, _, handRIS, smpl = imu_set.get_ipop()
 
     RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
     RSM = RMI.matmul(smpl).transpose(1, 2).matmul(torch.eye(3))
 
-    RSB_hand = RMI.matmul(handRIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
+    # RSB_hand = RMI.matmul(handRIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
 
-    return RMI, RSB, RSB_hand, RSM
+    # return RMI, RSB, RSB_hand, RSM
+    return RMI, RSB, _, RSM
 
 
 if __name__ == '__main__':
@@ -98,7 +131,7 @@ if __name__ == '__main__':
         clock.tick(59)
         q, a, hand_q, smpl = imu_set.get_ipop()
         RMB = RMI.matmul(q).matmul(RSB)
-        RMB_hand = RMI.matmul(hand_q).matmul(RSB_hand)
+        # RMB_hand = RMI.matmul(hand_q).matmul(RSB_hand)
 
         smpl = RMI.matmul(smpl).matmul(RSM)
         smpl = RMB[5].t().matmul(smpl)
@@ -127,24 +160,25 @@ if __name__ == '__main__':
         # print(1)
         smpl_axis = art.math.rotation_matrix_to_axis_angle(smpl)
         # print(smpl_axis.shape)
-        axis_part = [51, 54, 9, 12, 42, 15, 57, 60, 18, 21, 0, 3, 45, 48]
+        # axis_part = [51, 54, 9, 12, 42, 15, 57, 60, 18, 21, 0, 3, 45, 48]
+        axis_part = [51, 54, 9, 12, 42, 15, 0, 3, 45, 48]
         axis = tensor = torch.zeros(1, 69)
         for index, axis_num in enumerate(axis_part):
             axis[0][axis_num] = smpl_axis[index][0]
             axis[0][axis_num + 1] = smpl_axis[index][1]
             axis[0][axis_num + 2] = smpl_axis[index][2]
 
-        test_hand_q = [0, 0, 0, 0, 0, 0, 0, 0]
-        hand_r = rotation_matrix_to_quaternion(RMB_hand)
-        test_hand_q[0] = float(hand_r[6][0])
-        test_hand_q[1] = float(hand_r[6][1])
-        test_hand_q[2] = float(hand_r[6][2])
-        test_hand_q[3] = float(hand_r[6][3])
-
-        test_hand_q[4] = float(hand_r[7][0])
-        test_hand_q[5] = float(hand_r[7][1])
-        test_hand_q[6] = float(hand_r[7][2])
-        test_hand_q[7] = float(hand_r[7][3])
+        # test_hand_q = [0, 0, 0, 0, 0, 0, 0, 0]
+        # hand_r = rotation_matrix_to_quaternion(RMB_hand)
+        # test_hand_q[0] = float(hand_r[6][0])
+        # test_hand_q[1] = float(hand_r[6][1])
+        # test_hand_q[2] = float(hand_r[6][2])
+        # test_hand_q[3] = float(hand_r[6][3])
+        #
+        # test_hand_q[4] = float(hand_r[7][0])
+        # test_hand_q[5] = float(hand_r[7][1])
+        # test_hand_q[6] = float(hand_r[7][2])
+        # test_hand_q[7] = float(hand_r[7][3])
 
         aM = a.mm(RMI.t())
 
@@ -155,7 +189,7 @@ if __name__ == '__main__':
         pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), axis,
                                                 return_grf=True)
         elapsed_time = time.time() - start_time
-        print(f"Function executed in: {elapsed_time:.4f} seconds")
+        # print(f"Function executed in: {elapsed_time:.4f} seconds")
 
         pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
         tran = tran.view(-1, 3)
@@ -177,7 +211,7 @@ if __name__ == '__main__':
         # print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # server_address = ('192.168.201.100', 5005)
-        server_address = ('192.168.0.91', 5005)
+        server_address = ('192.168.0.198', 8888)
         sock.sendto(s.encode('utf-8'), server_address)
 
 

@@ -33,7 +33,8 @@ class UDPServer(threading.Thread):
         self._running = True
 
         # port = 56775
-        port = 56439
+        # port = 56572
+        port = 51115
         # port = 55000
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', port))
@@ -118,32 +119,45 @@ class UDPServer(threading.Thread):
                 qY = self.cul_byte_data(sensor_byte_data[45:49])
                 qZ = self.cul_byte_data(sensor_byte_data[49:53])
                 quaternion = Quaternion(qW, qX, qY, qZ)
+                sensor_part_list = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
+                                 SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST, SensorPart.LEFT_UPPER_LEG,
+                                      SensorPart.RIGHT_UPPER_LEG, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM
+                                    ]
+
+
+                if (sensor_part in sensor_part_list and accX == 0.0 and accY == 0.0):
+                    # print(f"part222 = {sensor_part}")
+                    # print(f"part222 = {sensor_part} x = {acc.x}, y = {acc.y}, z = {acc.z}")
+                    # print(
+                    #     f"part222 = {sensor_part} w = {quaternion.w}, x = {quaternion.x}, y = {quaternion.y}, z = {quaternion.z}")
+                    cheeck = True
+                    continue
 
                 # print(sensor_part, acc, quaternion)
-
-                if sensor_part == SensorPart.LEFT_HAND:
-                    # if sensor_part not in DataManager().hand_inv:
-                    #     DataManager().hand_inv[sensor_part] = quaternion
-
-                    # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
-                    # print(DataManager().hand_inv[sensor_part])
-                    # print(quaternion)
-                    # print('-'*50)
-                    DataManager().test_hand_q[0] = quaternion.w
-                    DataManager().test_hand_q[1] = quaternion.x
-                    DataManager().test_hand_q[2] = quaternion.y
-                    DataManager().test_hand_q[3] = quaternion.z
-                    # continue
-                elif sensor_part == SensorPart.RIGHT_HAND:
-                    # if sensor_part not in DataManager().hand_inv:
-                    #     DataManager().hand_inv[sensor_part] = quaternion
-
-                    # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
-                    DataManager().test_hand_q[4] = quaternion.w
-                    DataManager().test_hand_q[5] = quaternion.x
-                    DataManager().test_hand_q[6] = quaternion.y
-                    DataManager().test_hand_q[7] = quaternion.z
-                    # continue
+                #
+                # if sensor_part == SensorPart.LEFT_HAND:
+                #     # if sensor_part not in DataManager().hand_inv:
+                #     #     DataManager().hand_inv[sensor_part] = quaternion
+                #
+                #     # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
+                #     # print(DataManager().hand_inv[sensor_part])
+                #     # print(quaternion)
+                #     # print('-'*50)
+                #     DataManager().test_hand_q[0] = quaternion.w
+                #     DataManager().test_hand_q[1] = quaternion.x
+                #     DataManager().test_hand_q[2] = quaternion.y
+                #     DataManager().test_hand_q[3] = quaternion.z
+                #     # continue
+                # elif sensor_part == SensorPart.RIGHT_HAND:
+                #     # if sensor_part not in DataManager().hand_inv:
+                #     #     DataManager().hand_inv[sensor_part] = quaternion
+                #
+                #     # quaternion = quaternion *  DataManager().hand_inv[sensor_part]
+                #     DataManager().test_hand_q[4] = quaternion.w
+                #     DataManager().test_hand_q[5] = quaternion.x
+                #     DataManager().test_hand_q[6] = quaternion.y
+                #     DataManager().test_hand_q[7] = quaternion.z
+                #     # continue
 
                 # qAccX = (-1.0) * 2.0 * (quaternion.x * quaternion.z - quaternion.w * quaternion.y)
                 # qAccY = (-1.0) * 2.0 * (quaternion.y * quaternion.z + quaternion.w * quaternion.x)
@@ -162,31 +176,31 @@ class UDPServer(threading.Thread):
 
                 # 센서 정보 저장
                 DataManager().sensor_data = [sensor_part, [gyro, acc, mag, quaternion]]
-
-            l_finger_a = self.cul_byte_finger_data(receive_station_byte_data[905:907])
-            l_finger_b = self.cul_byte_finger_data(receive_station_byte_data[909:911])
-            l_finger_c = self.cul_byte_finger_data(receive_station_byte_data[913:915])
-            l_finger_d = self.cul_byte_finger_data(receive_station_byte_data[917:919])
-            l_finger_e = self.cul_byte_finger_data(receive_station_byte_data[921:923])
-
-            r_finger_a = self.cul_byte_finger_data(receive_station_byte_data[926:928])
-            r_finger_b = self.cul_byte_finger_data(receive_station_byte_data[930:932])
-            r_finger_c = self.cul_byte_finger_data(receive_station_byte_data[934:936])
-            r_finger_d = self.cul_byte_finger_data(receive_station_byte_data[938:940])
-            r_finger_e = self.cul_byte_finger_data(receive_station_byte_data[942:944])
-
-            if l_finger_e != 0:
-                DataManager().test_finger[0] = l_finger_e
-                DataManager().test_finger[1] = l_finger_d
-                DataManager().test_finger[2] = l_finger_c
-                DataManager().test_finger[3] = l_finger_b
-                DataManager().test_finger[4] = l_finger_a
-
-                DataManager().test_finger[5] = r_finger_e
-                DataManager().test_finger[6] = r_finger_d
-                DataManager().test_finger[7] = r_finger_c
-                DataManager().test_finger[8] = r_finger_b
-                DataManager().test_finger[9] = r_finger_a
+            #
+            # l_finger_a = self.cul_byte_finger_data(receive_station_byte_data[905:907])
+            # l_finger_b = self.cul_byte_finger_data(receive_station_byte_data[909:911])
+            # l_finger_c = self.cul_byte_finger_data(receive_station_byte_data[913:915])
+            # l_finger_d = self.cul_byte_finger_data(receive_station_byte_data[917:919])
+            # l_finger_e = self.cul_byte_finger_data(receive_station_byte_data[921:923])
+            #
+            # r_finger_a = self.cul_byte_finger_data(receive_station_byte_data[926:928])
+            # r_finger_b = self.cul_byte_finger_data(receive_station_byte_data[930:932])
+            # r_finger_c = self.cul_byte_finger_data(receive_station_byte_data[934:936])
+            # r_finger_d = self.cul_byte_finger_data(receive_station_byte_data[938:940])
+            # r_finger_e = self.cul_byte_finger_data(receive_station_byte_data[942:944])
+            #
+            # if l_finger_e != 0:
+            #     DataManager().test_finger[0] = l_finger_e
+            #     DataManager().test_finger[1] = l_finger_d
+            #     DataManager().test_finger[2] = l_finger_c
+            #     DataManager().test_finger[3] = l_finger_b
+            #     DataManager().test_finger[4] = l_finger_a
+            #
+            #     DataManager().test_finger[5] = r_finger_e
+            #     DataManager().test_finger[6] = r_finger_d
+            #     DataManager().test_finger[7] = r_finger_c
+            #     DataManager().test_finger[8] = r_finger_b
+            #     DataManager().test_finger[9] = r_finger_a
 
             # print("손가락 확인", l_finger_a, l_finger_b, l_finger_c, l_finger_d, l_finger_e)
             # print("손가락 확인", l_finger_a)

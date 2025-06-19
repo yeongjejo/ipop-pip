@@ -40,11 +40,17 @@ class UDPStationBroadcastReceiver(threading.Thread):
 
                 # 시리얼 번호 저장
                 serial = (data[6] << 8) | data[7]  # byte 값을 int로 변환 후 결합
+
+                # print('serial', serial)
+                # if serial != 880:
+                if serial != 879:
+                    continue
+                print(serial)
                 # print(f"IP 번호: {ip_num}, 시리얼: {serial}, Port6: {port6}, Port7: {port7}, 채널: {ch}")
 
                 # 포트 번호 (분할) 저장 (880 포트라고 가정)
-                # port_num = 56775  # 736포트
-                port_num = 56439  # 736포트
+                # port_num = 56569  # 880 포트
+                port_num = 56572  # 879 포트
                 port6 = (port_num >> 8) & 0xFF
                 port7 = port_num & 0xFF
 
@@ -74,7 +80,7 @@ class UDPStationBroadcastReceiver(threading.Thread):
             send_data[2] = (192) & 0xFF  # IP 주소
             send_data[3] = (168) & 0xFF
             send_data[4] = (0) & 0xFF
-            send_data[5] = (27) & 0xFF
+            send_data[5] = (192) & 0xFF
             send_data[6] = port6  # 포트 번호
             send_data[7] = port7
             send_data[8] = 0xFB

@@ -51,7 +51,7 @@ class PIP(torch.nn.Module):
         self.eval()
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model_folder = '/home/user/Desktop/smplx'
+        model_folder = r'C:\Users\ipop1\OneDrive\바탕 화면\smplx'
         use_face_contour = False
         num_betas = 10
         num_expression_coeffs = 10
@@ -134,7 +134,7 @@ class PIP(torch.nn.Module):
         # x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
         # x = self.rnn1.linear2(x[0])
         # x = torch.cat([x, imu], dim=1)
-
+        #
         # x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
         # x = self.rnn2.linear2(x[0])
 
@@ -157,7 +157,7 @@ class PIP(torch.nn.Module):
         betas = torch.randn([1, self.smpl_model.num_betas], dtype=torch.float32)
         expression = torch.randn([1, self.smpl_model.num_expression_coeffs], dtype=torch.float32)
 
-        _, test_pose = self.smpl_model(betas=betas, expression=expression, body_pose=glb_axis, return_verts=True)
+        smpl_body_axis, test_pose = self.smpl_model(betas=betas, expression=expression, body_pose=glb_axis, return_verts=True)
 
         test_pose = test_pose.flatten()
         test_pose = test_pose.unsqueeze(0)
@@ -180,6 +180,10 @@ class PIP(torch.nn.Module):
         x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0),
                                                self.rnn_states[2])
         global_6d_pose = self.rnn3.linear2(x1[0])
+
+        # print(smpl_body_axis)
+        # print(global_6d_pose)
+        # print('------------------------')
 
         x1, self.rnn_states[3] = self.rnn4.rnn(relu(self.rnn4.linear1(x), inplace=True).unsqueeze(0),
                                                self.rnn_states[3])

@@ -75,7 +75,7 @@ class DataManager():
             #                  SensorPart.RIGHT_HAND]
             #
             part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
-                             SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST]
+                             SensorPart.RIGHT_LOWER_LEG, SensorPart.HEAD, SensorPart.WAIST]
 
             # smpl_part_sequence = [SensorPart.LEFT_FOOT, SensorPart.RIGHT_FOOT, SensorPart.LEFT_UPPER_LEG,
             #                       SensorPart.RIGHT_UPPER_LEG, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM]

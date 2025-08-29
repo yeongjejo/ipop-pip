@@ -251,7 +251,7 @@ class ParametricModel:
         -----
         :param joint_list: List in length [num_subject] of tensors that can all reshape to [num_frame, num_joint, 3].
         :param fps: Sequence FPS.
-        :param distance_between_subjects: Distance in meters between subjects. 0.2 for hand and 0.8 for body is good.
+        :param distance_betweenㅂ_subjects: Distance in meters between subjects. 0.2 for hand and 0.8 for body is good.
         """
         import vctoolkit as vc
         import vctoolkit.viso3d as vo3d

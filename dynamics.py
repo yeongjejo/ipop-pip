@@ -7,6 +7,7 @@ from articulate.utils.rbdl import *
 from utils import *
 from qpsolvers import solve_qp
 from config import paths
+import pandas as pd
 
 
 class PhysicsOptimizer:
@@ -18,6 +19,7 @@ class PhysicsOptimizer:
     def __init__(self, debug=True):
         mu = 0.6
         supp_poly_size = 0.2
+        self.tetee = []
         self.debug = debug
         self.model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
         self.params = read_debug_param_values_from_json(paths.physics_parameter_file)
@@ -44,6 +46,21 @@ class PhysicsOptimizer:
         self.qdot = np.zeros(self.model.qdot_size)
         self.reset_states()
 
+        # ▶ CSV 파일 초기화 (헤더 작성)
+        self.csv_path = 'realtime_vectors.csv'
+        self.columns = ['X', 'Y', 'Z']
+        self.df = pd.DataFrame(columns=self.columns)
+        self.df.to_csv(self.csv_path, index=False)
+
+        self.test1 = [0.0, 0.0, 0.0]
+        self.test2 = [0.0, 0.0, 0.0]
+
+    # ▶ 실시간 데이터 저장 함수
+    def save_vector_to_csv(self, vector, file_path):
+        df = pd.DataFrame([vector], columns=['X', 'Y', 'Z'])
+        df.to_csv(file_path, mode='a', index=False, header=False)
+
+
     def reset_states(self):
         self.last_x = []
         self.q = None
@@ -51,12 +68,14 @@ class PhysicsOptimizer:
 
     def optimize_frame(self, pose, jvel, contact, acc, return_grf=False):
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
+        # self.tetee.append(jvel.numpy()[0])
+        # self.save_vector_to_csv(jvel.numpy()[0], self.csv_path)
+
         v_ref = jvel.numpy()
         c_ref = contact.sigmoid().numpy()
         a_ref = acc.numpy()
         q = self.q
         qdot = self.qdot
-        
 
         if q is None:
             self.q = q_ref
@@ -199,6 +218,14 @@ class PhysicsOptimizer:
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
 
+                # if pos[1] <= self.params['floor_y']:
+                #     J = self.model.calc_point_Jacobian(q, joint_id)
+                #     v = self.model.calc_point_velocity(q, qdot, joint_id)
+                #     Gs1.append(-self.params['delta_t'] * J)
+                #     hs1.append(v - [-1e-1, 0, -1e-1])
+                #     Gs1.append(self.params['delta_t'] * J)
+                #     hs1.append(-v + [1e-1, 1e2, 1e-1])
+
                 th = -np.log(min(stable, 0.84999) / 0.85)
                 th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                 Gs1.append(-self.params['delta_t'] * J)
@@ -246,6 +273,10 @@ class PhysicsOptimizer:
 
         qdot = qdot + qddot * self.params['delta_t']
         q = q + qdot * self.params['delta_t']
+        # print(v_ref)
+        # print(qdot)
+        # print(self.params['delta_t'])
+        # print('-'*10)
         self.q = q
         self.qdot = qdot
         self.last_x = x
@@ -260,13 +291,24 @@ class PhysicsOptimizer:
                 for point, force in zip(collision_points, GRF.reshape(-1, 3)):
                     p.addUserDebugLine(point, point + force * 1e-2, [1, 0, 0])
 
+        # print(q)
         pose_opt, tran_opt = rbdl_to_smpl(q)
+        # print(tran_opt)
+        # print('-'*5)
         pose_opt = torch.from_numpy(pose_opt).float()[0]
         tran_opt = torch.from_numpy(tran_opt).float()[0]
+
+        # self.test2 += qdot[:3] * self.params['delta_t']
+        # self.test1 += v_ref[0] * self.params['delta_t']
+        # print(self.test1[0]-tran_opt[0], self.test1[1]-tran_opt[1], self.test1[2]-tran_opt[2])
+        # print(self.test1[0]-self.test2[0], self.test1[1]-self.test2[1], self.test1[2]-self.test2[2])
+        # print("-"*50)
+
         if not return_grf:
             return pose_opt, tran_opt
         else:
             cj = [vars(art.SMPLJoint)[_].value for _ in collision_joints]
             grf = torch.from_numpy(GRF).float().view(-1, 4, 3).sum(dim=1) if len(cj) > 0 else None
+            # return pose_opt, torch.tensor(self.test1), cj, grf
             return pose_opt, tran_opt, cj, grf
         return pose_opt, tran_opt

@@ -395,11 +395,11 @@ class SMPL(nn.Module):
         if apply_trans:
             joints += transl.unsqueeze(dim=1)
             vertices += transl.unsqueeze(dim=1)
-            
-        print('-----------------')
-        print(body_pose)
-        print(joints)
-        print('-----------------')
+        #
+        # print('-----------------')
+        # print(body_pose)
+        # print(joints)
+        # print('-----------------')
 
         output = SMPLOutput(vertices=vertices if return_verts else None,
                             global_orient=global_orient,

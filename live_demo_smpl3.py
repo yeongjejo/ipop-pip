@@ -7,6 +7,7 @@ import articulate as art
 import os
 from config import *
 from data_manager import DataManager
+from protocol.axio_server import AxioServer
 from protocol.udp_server import UDPServer
 from protocol.udp_station_broadcast_receiver import UDPStationBroadcastReceiver
 import time
@@ -69,14 +70,15 @@ def tpose_save_date():
 
 
 def tpose_calibration_ipop_2024(test, imu_set):
-    # RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
-    RSI = tpose_save_date()[0][5].view(3, 3).t()
+    if len(imu_set.get_ipop()[0]) == 0:
+        return None, None, None, None
+    RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
+    # RSI = tpose_save_date()[0][5].view(3, 3).t()
 
-    RMI = torch.tensor([[0, 0, -1], [0, 1, 0], [-1, 0, 0.]]).mm(RSI)
+    RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
     # RMI = torch.tensor([[0, 0, 1], [0, 1, 0], [1, 0, 0.]]).mm(RSI)
 
     RIS, _, handRIS, smpl = imu_set.get_ipop()
-
 
     RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
     RSM = RMI.matmul(smpl).transpose(1, 2).matmul(torch.eye(3))
@@ -88,11 +90,7 @@ def tpose_calibration_ipop_2024(test, imu_set):
 
 
 if __name__ == '__main__':
-    UDPStationBroadcastReceiver().start()
-    # time.sleep(1)
-    UDPServer().start()
-    # XsensUDPServer().start()
-    # time.sleep(99999)
+    AxioServer().start()
 
     # time.sleep(1000)
 
@@ -127,13 +125,18 @@ if __name__ == '__main__':
 
             imu_set = IMUSet(test)
             net = PIP()
-            RMI, RSB, RSB_hand, RSM = tpose_calibration_ipop_2024(test, imu_set)
+            while True:
+                RMI, RSB, RSB_hand, RSM = tpose_calibration_ipop_2024(test, imu_set)
+                if(RMI != None):
+                    break
+
 
             re_tpose = False
 
         clock.tick(59)
         q, a, hand_q, smpl = imu_set.get_ipop()
         RMB = q
+        # RMB = RMI.matmul(q).matmul(RSB)
         # RMB_hand = RMI.matmul(hand_q).matmul(RSB_hand)
 
         smpl = RMB[5].t().matmul(smpl)
@@ -171,11 +174,7 @@ if __name__ == '__main__':
             axis[0][axis_num + 2] = smpl_axis[index][2]
 
         # test_hand_q = [0, 0, 0, 0, 0, 0, 0, 0]
-        # hand_r = rotation_matrix_to_quaternion(RMB_hand)
-        # test_hand_q[0] = float(hand_r[6][0])
-        # test_hand_q[1] = float(hand_r[6][1])
-        # test_hand_q[2] = float(hand_r[6][2])
-        # test_hand_q[3] = float(hand_r[6][3])
+        # hand_r = rotation_matrix_to_quaternion(RMB_hand)0
         #
         # test_hand_q[4] = float(hand_r[7][0])
         # test_hand_q[5] = float(hand_r[7][1])
@@ -210,11 +209,8 @@ if __name__ == '__main__':
             (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
         # print(','.join(['%g' % v for v in test_hand_q]) + '#')
 
-        # print("-----------------------------")
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # server_address = ('192.168.201.100', 5005)
-        # server_address = ('192.168.0.198', 8888)
-        server_address = ('192.168.201.110', 8888)
+        server_address = ('192.168.0.34', 8888)
         sock.sendto(s.encode('utf-8'), server_address)
 
 

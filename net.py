@@ -180,8 +180,7 @@ class PIP(torch.nn.Module):
         pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
         joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
 
-        joint_velocity[0][0] = torch.tensor([0.0, 0.0, 0.0])
-        print('------------------------')
+        # print('------------------------')
 
 
 

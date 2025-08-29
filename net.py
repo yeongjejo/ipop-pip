@@ -190,7 +190,6 @@ class PIP(torch.nn.Module):
             if self.index != 0:
                 pre_data = DataManager().totalcapture_vicon_pose[self.index-1][i]
 
-
             joint_velocity[0][bone] = torch.tensor([(vicon_pose[0] - pre_data[0]) , vicon_pose[1] - pre_data[1], vicon_pose[2] - pre_data[2]])
             # if i == 0:
             #     joint_velocity[0][bone] = torch.tensor([vicon_pose[0], vicon_pose[1], vicon_pose[2]])

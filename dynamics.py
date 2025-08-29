@@ -273,6 +273,8 @@ class PhysicsOptimizer:
 
         qdot = qdot + qddot * self.params['delta_t']
         q = q + qdot * self.params['delta_t']
+
+
         # print(v_ref)
         # print(qdot)
         # print(self.params['delta_t'])

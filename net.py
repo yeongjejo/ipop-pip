@@ -3,6 +3,7 @@ from torch.nn.utils.rnn import *
 import articulate as art
 from articulate.utils.torch import *
 from config import *
+from data_manager import DataManager
 from utils import *
 from dynamics import PhysicsOptimizer
 from torch.nn.functional import relu
@@ -49,6 +50,7 @@ class PIP(torch.nn.Module):
 
         self.load_state_dict(torch.load(paths.weights_file))
         self.eval()
+        self.index = 0
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model_folder = r'C:\Users\ipop1\OneDrive\바탕 화면\smplx'
@@ -180,9 +182,21 @@ class PIP(torch.nn.Module):
         pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
         joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
 
-        # print(joint_velocity[0][0])
-        # print('------------------------')
+        bone_seq = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 15, 16, 17, 18, 19]
+        for i, bone in enumerate(bone_seq):
+            pre_data = DataManager().totalcapture_vicon_pose[0][i]
+            # print(self.index, i, len(DataManager().totalcapture_vicon_pose[self.index]))
+            vicon_pose = DataManager().totalcapture_vicon_pose[self.index][i]
+            if self.index != 0:
+                pre_data = DataManager().totalcapture_vicon_pose[self.index-1][i]
 
+            # if i == 0:
+                # print(joint_velocity[0][bone], torch.tensor([(vicon_pose[0] - pre_data[0]) / 0.16 , (vicon_pose[1] - pre_data[1]) / 0.16, (vicon_pose[2] - pre_data[2])]))
+            joint_velocity[0][bone] = torch.tensor([(vicon_pose[0] - pre_data[0]) , vicon_pose[1] - pre_data[1], vicon_pose[2] - pre_data[2]])
+            # if i == 0:
+            #     joint_velocity[0][bone] = torch.tensor([vicon_pose[0], vicon_pose[1], vicon_pose[2]])
+
+        self.index += 1
 
 
         # TODO: multiple people

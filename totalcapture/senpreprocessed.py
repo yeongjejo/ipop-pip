@@ -2,6 +2,7 @@ import csv
 import numpy as np
 from typing import List, Dict
 
+import pandas as pd
 from data_manager import DataManager
 from sensor.quaternion import Quaternion
 from sensor.acc import Acc
@@ -71,3 +72,117 @@ class TotalcaptureIMUData():
                 DataManager().sensor_data = [sensor_part[i], [gyro, acc, mag, quaternion]]
 
             DataManager().setTotalcaptureIMUData()
+
+
+
+class TotalcaptureViconData():
+    def __init__(self):
+        pass
+
+    def quat_mul(self, q1, q2):
+        w1, x1, y1, z1 = q1
+        w2, x2, y2, z2 = q2
+        return np.array([
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+        ], dtype=float)
+
+    def quat_inverse(self, q):
+        w, x, y, z = q
+        norm2 = np.dot(q, q)
+        return np.array([w, -x, -y, -z], dtype=float) / norm2
+
+    def load_joint_data(self, file_path, data_form):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # 첫 줄: 관절 이름
+        headers = lines[0].strip().split('\t')
+
+        # 나머지 줄: 각 줄은 값들이 \t 구분되어 있음
+        data = []
+        for line in lines[1:]:
+            values = line.strip().split('\t')
+            # 각 관절마다 4개의 값 (x,y,z,w)
+            frame = []
+            for v in values:
+                nums = v.split()
+                frame.append([float(n) for n in nums])
+            data.append(frame)
+
+        # DataFrame으로 변환
+        # 멀티컬럼 구조: (Joint, Component)
+        # cols = pd.MultiIndex.from_product([headers, ['x', 'y', 'z', 'w']], names=['Joint', 'Component'])
+        cols = pd.MultiIndex.from_product([headers, data_form], names=['Joint', 'Component'])
+        df = pd.DataFrame([sum(frame, []) for frame in data], columns=cols)
+
+        return df
+
+
+    def setTotalcaptureViconData(self):
+        # 사용 예시
+        pose = self.load_joint_data("gt_skel_gbl_pos.txt", ['x', 'y', 'z'])
+        ori = self.load_joint_data("gt_skel_gbl_ori.txt", ['x', 'y', 'z', 'w'])
+
+        first_q = []
+        for (idx, pose_row), (_, ori_row) in zip(pose.iterrows(), ori.iterrows()):
+            axio_bone_seq = [
+                [pose_row.Hips, ori_row.Hips],
+                [pose_row.Spine3, ori_row.Spine3],
+                [pose_row.Head, ori_row.Head],
+                [pose_row.LeftArm, ori_row.LeftArm],
+                [pose_row.LeftForeArm, ori_row.LeftForeArm],
+                [pose_row.LeftHand, ori_row.LeftHand],
+                [pose_row.RightArm, ori_row.RightArm],
+                [pose_row.RightForeArm, ori_row.RightForeArm],
+                [pose_row.RightHand, ori_row.RightHand],
+                [pose_row.LeftUpLeg, ori_row.LeftUpLeg],
+                [pose_row.LeftLeg, ori_row.LeftLeg],
+                [pose_row.LeftFoot, ori_row.LeftFoot],
+                [pose_row.RightUpLeg, ori_row.RightUpLeg],
+                [pose_row.RightLeg, ori_row.RightLeg],
+                [pose_row.RightFoot, ori_row.RightFoot]
+            ]
+
+            smpl_bone_seq = [
+                [pose_row.Hips, ori_row.Hips],
+                [pose_row.LeftUpLeg, ori_row.LeftUpLeg],
+                [pose_row.RightUpLeg, ori_row.RightUpLeg],
+                [pose_row.Spine1, ori_row.Spine1],
+                [pose_row.LeftLeg, ori_row.LeftLeg],
+                [pose_row.RightLeg, ori_row.RightLeg],
+                [pose_row.Spine2, ori_row.Spine2],
+                [pose_row.LeftFoot, ori_row.LeftFoot],
+                [pose_row.RightFoot, ori_row.RightFoot],
+                [pose_row.Spine3, ori_row.Spine3],
+                #10 왼발
+                #11 오른발
+                [pose_row.Neck, ori_row.Neck],
+                #13 왼쪽어깨
+                #14 오른쪽 어께
+                [pose_row.Head, ori_row.Head],
+                [pose_row.LeftArm, ori_row.LeftArm],
+                [pose_row.RightArm, ori_row.RightArm],
+                [pose_row.LeftForeArm, ori_row.LeftForeArm],
+                [pose_row.RightForeArm, ori_row.RightForeArm],
+                #20 왼손
+                #21 오른손
+                #22 왼손가락
+                #23 오른손가락
+            ]
+
+            vicon_pose = []
+            vicon_ori = []
+            for i, bone in enumerate(smpl_bone_seq):
+                q = np.array([bone[1].w, -bone[1].x, bone[1].y, -bone[1].z])
+                if idx == 0:
+                    first_q.append(self.quat_inverse(q))
+
+                vicon_pose.append([-bone[0].x, bone[0].y, -bone[0].z])
+                vicon_ori.append(self.quat_mul(q, first_q[i]).tolist())
+
+            DataManager().totalcapture_vicon_pose.append(vicon_pose)
+            DataManager().totalcapture_vicon_ori.append(vicon_ori)
+

@@ -218,20 +218,20 @@ class PhysicsOptimizer:
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
 
-                # if pos[1] <= self.params['floor_y']:
-                #     J = self.model.calc_point_Jacobian(q, joint_id)
-                #     v = self.model.calc_point_velocity(q, qdot, joint_id)
-                #     Gs1.append(-self.params['delta_t'] * J)
-                #     hs1.append(v - [-1e-1, 0, -1e-1])
-                #     Gs1.append(self.params['delta_t'] * J)
-                #     hs1.append(-v + [1e-1, 1e2, 1e-1])
+                if pos[1] <= self.params['floor_y']:
+                    J = self.model.calc_point_Jacobian(q, joint_id)
+                    v = self.model.calc_point_velocity(q, qdot, joint_id)
+                    Gs1.append(-self.params['delta_t'] * J)
+                    hs1.append(v - [-1e-1, 0, -1e-1])
+                    Gs1.append(self.params['delta_t'] * J)
+                    hs1.append(-v + [1e-1, 1e2, 1e-1])
 
-                th = -np.log(min(stable, 0.84999) / 0.85)
-                th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
-                Gs1.append(-self.params['delta_t'] * J)
-                hs1.append(v - [-th, th_y, -th])
-                Gs1.append(self.params['delta_t'] * J)
-                hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
+                # th = -np.log(min(stable, 0.84999) / 0.85)
+                # th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
+                # Gs1.append(-self.params['delta_t'] * J)
+                # hs1.append(v - [-th, th_y, -th])
+                # Gs1.append(self.params['delta_t'] * J)
+                # hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
 
         # GRF friction cone constraint
         if True:
@@ -301,7 +301,7 @@ class PhysicsOptimizer:
         tran_opt = torch.from_numpy(tran_opt).float()[0]
 
         # self.test2 += qdot[:3] * self.params['delta_t']
-        # self.test1 += v_ref[0] * self.params['delta_t']
+        self.test1 += v_ref[0] * self.params['delta_t']
         # print(self.test1[0]-tran_opt[0], self.test1[1]-tran_opt[1], self.test1[2]-tran_opt[2])
         # print(self.test1[0]-self.test2[0], self.test1[1]-self.test2[1], self.test1[2]-self.test2[2])
         # print("-"*50)
@@ -311,6 +311,6 @@ class PhysicsOptimizer:
         else:
             cj = [vars(art.SMPLJoint)[_].value for _ in collision_joints]
             grf = torch.from_numpy(GRF).float().view(-1, 4, 3).sum(dim=1) if len(cj) > 0 else None
-            # return pose_opt, torch.tensor(self.test1), cj, grf
-            return pose_opt, tran_opt, cj, grf
+            return pose_opt, torch.tensor(self.test1), cj, grf
+            # return pose_opt, tran_opt, cj, grf
         return pose_opt, tran_opt

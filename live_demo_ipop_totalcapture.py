@@ -7,7 +7,7 @@ import time
 import socket
 import json
 
-from totalcapture.senpreprocessed import TotalcaptureIMUData
+from totalcapture.senpreprocessed import TotalcaptureIMUData, TotalcaptureViconData
 
 
 class IMUSet:
@@ -52,11 +52,12 @@ def tpose_calibration_ipop_2024(imu_set):
 
 if __name__ == '__main__':
     TotalcaptureIMUData().setTotalcaptureIMUData()
-    test = True
-
+    print(222)
+    TotalcaptureViconData().setTotalcaptureViconData()
+    print(1111)
 
     clock = Clock()
-    
+
     while True:
         imu_set = IMUSet()
         net = PIP()

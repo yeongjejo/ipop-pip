@@ -51,6 +51,8 @@ class PIP(torch.nn.Module):
         self.load_state_dict(torch.load(paths.weights_file))
         self.eval()
         self.index = 0
+        self.max = 0.0
+        self.min = 0.0
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model_folder = r'C:\Users\ipop1\OneDrive\바탕 화면\smplx'
@@ -121,7 +123,7 @@ class PIP(torch.nn.Module):
         return pose_opt, tran_opt
 
     @torch.no_grad()
-    def forward_frame(self, glb_acc, glb_rot, return_grf=False):
+    def forward_frame(self, glb_acc, glb_rot, check_rbdl, return_grf=False):
         r"""
         Forward. Currently only support 1 subject.
 
@@ -182,21 +184,28 @@ class PIP(torch.nn.Module):
         pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
         joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
 
-        bone_seq = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 15, 16, 17, 18, 19]
-        for i, bone in enumerate(bone_seq):
-            pre_data = DataManager().totalcapture_vicon_pose[0][i]
-            # print(self.index, i, len(DataManager().totalcapture_vicon_pose[self.index]))
-            vicon_pose = DataManager().totalcapture_vicon_pose[self.index][i]
-            if self.index != 0:
-                pre_data = DataManager().totalcapture_vicon_pose[self.index-1][i]
+        #
 
-            joint_velocity[0][bone] = torch.tensor([(vicon_pose[0] - pre_data[0]) , vicon_pose[1] - pre_data[1], vicon_pose[2] - pre_data[2]])
-            # if i == 0:
-            #     joint_velocity[0][bone] = torch.tensor([vicon_pose[0], vicon_pose[1], vicon_pose[2]])
+        if not check_rbdl:
+            bone_seq = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19] # 발목에 넣었을때
+            # bone_seq = [0, 1, 2, 3, 4, 5, 6, 10, 11, 9, 12, 13, 14, 15, 16, 17, 18, 19] # 발에 넣었을때
+            for i, bone in enumerate(bone_seq):
+                pre_data = DataManager().totalcapture_vicon_pose[0][i]
+                # print(self.index, i, len(DataManager().totalcapture_vicon_pose[self.index]))
+                vicon_pose = DataManager().totalcapture_vicon_pose[self.index][i]
+                if self.index != 0:
+                    pre_data = DataManager().totalcapture_vicon_pose[self.index-1][i]
 
-        self.index += 1
+                joint_velocity[0][bone] = torch.tensor([(vicon_pose[0] - pre_data[0])  , vicon_pose[1] - pre_data[1], vicon_pose[2] - pre_data[2]])
+                # if i == 0:
+                #     joint_velocity[0][bone] = torch.tensor([vicon_pose[0], vicon_pose[1], vicon_pose[2]])
 
+            self.index += 1
+
+        # print(pose.shape)
+        # print(art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(pose)))
+        print(joint_velocity[0])
 
         # TODO: multiple people
-        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(),
+        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), check_rbdl,
                                                       return_grf=return_grf)

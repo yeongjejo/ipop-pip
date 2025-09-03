@@ -66,7 +66,7 @@ class PhysicsOptimizer:
         self.q = None
         self.qdot = np.zeros(self.model.qdot_size)
 
-    def optimize_frame(self, pose, jvel, contact, acc, return_grf=False):
+    def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, return_grf=False):
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
         # self.tetee.append(jvel.numpy()[0])
         # self.save_vector_to_csv(jvel.numpy()[0], self.csv_path)
@@ -94,6 +94,8 @@ class PhysicsOptimizer:
         for joint_name in self.test_contact_joints:
             joint_id = vars(Body)[joint_name]
             pos = self.model.calc_body_position(q, joint_id)
+            # if joint_id == Body.LFOOT and c_ref[0] > 0.5 and pos[1] <= self.params['floor_y'] + 0.03 or \
+            #    joint_id == Body.RFOOT and c_ref[1] > 0.5 and pos[1] <= self.params['floor_y'] + 0.03 or \
             if joint_id == Body.LFOOT and c_ref[0] > 0.5 and pos[1] <= self.params['floor_y'] + 0.03 or \
                joint_id == Body.RFOOT and c_ref[1] > 0.5 and pos[1] <= self.params['floor_y'] + 0.03 or \
                pos[1] <= self.params['floor_y']:
@@ -218,20 +220,20 @@ class PhysicsOptimizer:
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
 
-                if pos[1] <= self.params['floor_y']:
-                    J = self.model.calc_point_Jacobian(q, joint_id)
-                    v = self.model.calc_point_velocity(q, qdot, joint_id)
-                    Gs1.append(-self.params['delta_t'] * J)
-                    hs1.append(v - [-1e-1, 0, -1e-1])
-                    Gs1.append(self.params['delta_t'] * J)
-                    hs1.append(-v + [1e-1, 1e2, 1e-1])
-
-                # th = -np.log(min(stable, 0.84999) / 0.85)
-                # th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
-                # Gs1.append(-self.params['delta_t'] * J)
-                # hs1.append(v - [-th, th_y, -th])
-                # Gs1.append(self.params['delta_t'] * J)
-                # hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
+                # if pos[1] <= self.params['floor_y']:
+                #     J = self.model.calc_point_Jacobian(q, joint_id)
+                #     v = self.model.calc_point_velocity(q, qdot, joint_id)
+                #     Gs1.append(-self.params['delta_t'] * J)
+                #     hs1.append(v - [-1e-1, 0, -1e-1])
+                #     Gs1.append(self.params['delta_t'] * J)
+                #     hs1.append(-v + [1e-1, 1e2, 1e-1])
+                #
+                th = -np.log(min(stable, 0.84999) / 0.85)
+                th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
+                Gs1.append(-self.params['delta_t'] * J)
+                hs1.append(v - [-th, th_y, -th])
+                Gs1.append(self.params['delta_t'] * J)
+                hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
 
         # GRF friction cone constraint
         if True:
@@ -311,6 +313,8 @@ class PhysicsOptimizer:
         else:
             cj = [vars(art.SMPLJoint)[_].value for _ in collision_joints]
             grf = torch.from_numpy(GRF).float().view(-1, 4, 3).sum(dim=1) if len(cj) > 0 else None
+            # if check_rbdl:
+            #     return pose_opt, tran_opt, cj, grf
             return pose_opt, torch.tensor(self.test1), cj, grf
             # return pose_opt, tran_opt, cj, grf
         return pose_opt, tran_opt

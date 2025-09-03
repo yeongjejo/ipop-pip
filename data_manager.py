@@ -22,6 +22,8 @@ class DataManager():
     totalcapture_vicon_ori = []
     totalcapture_vicon_pose = []
 
+    totalcapture_gt= []
+
     # 싱글톤 설정
     def __new__(cls, *args, **kwargs):
         if not cls._instance:

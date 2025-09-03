@@ -160,8 +160,8 @@ class TotalcaptureViconData():
                 #10 왼발
                 #11 오른발
                 [pose_row.Neck, ori_row.Neck],
-                #13 왼쪽어깨
-                #14 오른쪽 어께
+                [pose_row.LeftShoulder, ori_row.LeftShoulder],
+                [pose_row.RightShoulder, ori_row.RightShoulder],
                 [pose_row.Head, ori_row.Head],
                 [pose_row.LeftArm, ori_row.LeftArm],
                 [pose_row.RightArm, ori_row.RightArm],
@@ -185,4 +185,30 @@ class TotalcaptureViconData():
 
             DataManager().totalcapture_vicon_pose.append(vicon_pose)
             DataManager().totalcapture_vicon_ori.append(vicon_ori)
+
+
+            sned_data = []
+            for i, bone in enumerate(axio_bone_seq):
+                frame_pose = []
+                q = np.array([bone[1].w, -bone[1].x, bone[1].y, -bone[1].z])
+                if idx == 0:
+                    first_q.append(self.quat_inverse(q))
+                    if i == 0:
+                        f_root_postion = [-bone[0].x / 3.0, bone[0].y / 3.0, -bone[0].z / 3.0]
+
+                frame_pose = [(-bone[0].x / 3.0) - f_root_postion[0], (bone[0].y / 3.0) - f_root_postion[1] + 11.0,
+                              (-bone[0].z / 3.0) - f_root_postion[2]]
+
+                frame_bone_data = {
+                    "time": "1",
+                    "name": "test",
+                    # "position": [0.0, 0.0, 0.0],
+                    "position": frame_pose,
+                    "rotation": self.quat_mul(q, first_q[i]).tolist(),
+                    # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
+                    "acc": [0.0, 0.0, 0.0]
+                }
+                sned_data.append(frame_bone_data)
+
+            DataManager().totalcapture_gt.append(sned_data)
 

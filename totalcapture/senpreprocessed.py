@@ -130,11 +130,16 @@ class TotalcaptureViconData():
         for (idx, pose_row), (_, ori_row) in zip(pose.iterrows(), ori.iterrows()):
             axio_bone_seq = [
                 [pose_row.Hips, ori_row.Hips],
+                [pose_row.Spine1, ori_row.Spine1],
+                [pose_row.Spine2, ori_row.Spine2],
                 [pose_row.Spine3, ori_row.Spine3],
+                [pose_row.Neck, ori_row.Neck],
                 [pose_row.Head, ori_row.Head],
+                [pose_row.LeftShoulder, ori_row.LeftShoulder],
                 [pose_row.LeftArm, ori_row.LeftArm],
                 [pose_row.LeftForeArm, ori_row.LeftForeArm],
                 [pose_row.LeftHand, ori_row.LeftHand],
+                [pose_row.RightShoulder, ori_row.RightShoulder],
                 [pose_row.RightArm, ori_row.RightArm],
                 [pose_row.RightForeArm, ori_row.RightForeArm],
                 [pose_row.RightHand, ori_row.RightHand],
@@ -173,6 +178,23 @@ class TotalcaptureViconData():
                 #23 오른손가락
             ]
 
+            p_c_bone = {
+                0 : [1, 2, 3],
+                1 : [4],
+                2 : [5],
+                3 : [6],
+                4 : [7],
+                5 : [8],
+                6 : [9],
+                9 : [10, 11, 12],
+                10 : [13],
+                11 : [14],
+                12 : [15],
+                14 : [16],
+                15 : [17]
+
+            }
+
             vicon_pose = []
             vicon_ori = []
             for i, bone in enumerate(smpl_bone_seq):
@@ -186,6 +208,16 @@ class TotalcaptureViconData():
             DataManager().totalcapture_vicon_pose.append(vicon_pose)
             DataManager().totalcapture_vicon_ori.append(vicon_ori)
 
+            local_ori = [vicon_ori[0]]
+            for p, c_list in p_c_bone.items():
+                p_q = np.array([vicon_ori[p][0], vicon_ori[p][1], vicon_ori[p][2], vicon_ori[p][3]])
+                p_inv = self.quat_inverse(p_q)
+                for c in c_list:
+                    c_q = np.array([vicon_ori[c][0], vicon_ori[c][1], vicon_ori[c][2], vicon_ori[c][3]])
+                    local_ori.append(self.quat_mul(p_inv, c_q).tolist())
+
+            DataManager().totalcapture_vicon_local_ori.append(local_ori)
+
 
             sned_data = []
             for i, bone in enumerate(axio_bone_seq):
@@ -198,6 +230,8 @@ class TotalcaptureViconData():
 
                 frame_pose = [(-bone[0].x / 3.0) - f_root_postion[0], (bone[0].y / 3.0) - f_root_postion[1] + 11.0,
                               (-bone[0].z / 3.0) - f_root_postion[2]]
+                if i == 0:
+                    DataManager().premodel_root_p.append(frame_pose)
 
                 frame_bone_data = {
                     "time": "1",

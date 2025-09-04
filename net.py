@@ -187,8 +187,8 @@ class PIP(torch.nn.Module):
         #
 
         if not check_rbdl:
-            bone_seq = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19] # 발목에 넣었을때
-            # bone_seq = [0, 1, 2, 3, 4, 5, 6, 10, 11, 9, 12, 13, 14, 15, 16, 17, 18, 19] # 발에 넣었을때
+            # bone_seq = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19] # 발목에 넣었을때
+            bone_seq = [0, 1, 2, 3, 4, 5, 6, 10, 11, 9, 12, 13, 14, 15, 16, 17, 18, 19] # 발에 넣었을때
             for i, bone in enumerate(bone_seq):
                 pre_data = DataManager().totalcapture_vicon_pose[0][i]
                 # print(self.index, i, len(DataManager().totalcapture_vicon_pose[self.index]))
@@ -198,13 +198,22 @@ class PIP(torch.nn.Module):
 
                 joint_velocity[0][bone] = torch.tensor([(vicon_pose[0] - pre_data[0])  , vicon_pose[1] - pre_data[1], vicon_pose[2] - pre_data[2]])
                 # if i == 0:
+                #     print(art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().totalcapture_vicon_ori[self.index][i]))[0])
+                # print(art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().totalcapture_vicon_local_ori[self.index][i]))[0])
+                pose[0][bone] = art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().totalcapture_vicon_local_ori[self.index][i]))[0]
+                # pose[0][bone] = art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().totalcapture_vicon_ori[self.index][i]))[0]
+                # print(pose[0][i])
+                # print('-'*50)
+
+                # if i == 0:
                 #     joint_velocity[0][bone] = torch.tensor([vicon_pose[0], vicon_pose[1], vicon_pose[2]])
 
             self.index += 1
 
         # print(pose.shape)
         # print(art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(pose)))
-        print(joint_velocity[0])
+        # print(joint_velocity[0])
+
 
         # TODO: multiple people
         return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), check_rbdl,

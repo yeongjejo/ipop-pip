@@ -224,10 +224,12 @@ class PhysicsOptimizer:
                 #     J = self.model.calc_point_Jacobian(q, joint_id)
                 #     v = self.model.calc_point_velocity(q, qdot, joint_id)
                 #     Gs1.append(-self.params['delta_t'] * J)
+                #     # hs1.append(v - [-1.0, 0, -1.0])
                 #     hs1.append(v - [-1e-1, 0, -1e-1])
                 #     Gs1.append(self.params['delta_t'] * J)
+                #     # hs1.append(-v + [1.0, 1e2, 1.0])
                 #     hs1.append(-v + [1e-1, 1e2, 1e-1])
-                #
+
                 th = -np.log(min(stable, 0.84999) / 0.85)
                 th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                 Gs1.append(-self.params['delta_t'] * J)
@@ -315,6 +317,10 @@ class PhysicsOptimizer:
             grf = torch.from_numpy(GRF).float().view(-1, 4, 3).sum(dim=1) if len(cj) > 0 else None
             # if check_rbdl:
             #     return pose_opt, tran_opt, cj, grf
-            return pose_opt, torch.tensor(self.test1), cj, grf
-            # return pose_opt, tran_opt, cj, grf
+            # return pose_opt, torch.tensor(self.test1), cj, grf
+            # print(pose_opt.shape)
+            # print(pose.shape)
+            # print('---')
+            # return pose, torch.tensor(self.test1), cj, grf
+            return pose_opt, tran_opt, cj, grf
         return pose_opt, tran_opt

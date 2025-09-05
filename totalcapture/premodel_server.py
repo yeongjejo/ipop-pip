@@ -50,34 +50,17 @@ class PreModelServer(threading.Thread):
                 # for i in range(1000):
                 #     continue
                 json_data = json.loads(data.decode('utf-8'))
+                DataManager().premodel_output_q= []
+                DataManager().premodel_output_vel= []
                 for item in json_data:
-                    print(item['velocity'], item['quaternion'])
-                print('-'*30)
+                    DataManager().premodel_output_q.append(item['quaternion'])
+                    DataManager().premodel_output_vel.append(item['velocity'])
+                #     print(item['velocity'])
+                # print(DataManager().premodel_output_vel)
+                # print('----')
 
                 DataManager().udp_switch = True
-                # # 바이트 데이터를 문자열로 디코딩 후 JSON 파싱
-                # json_data = json.loads(data.decode('utf-8'))
-                # # 전체 데이터 반복
-                # for item in json_data:
-                #     name = item.get('name', 'Unknown')
-                #     part_num = 0
-                #     if name in part_name_num.keys():
-                #         part_num = part_name_num[name]
-                #     else:
-                #         continue
-                #     acc = item.get('acc', [0, 0, 0])
-                #     rotation = item.get('rotation', [0, 0, 0, 0])
-                #
-                #     sensor_part = SensorPart(part_num)
-                #     q = Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
-                #     a = Acc(acc[0], acc[1], acc[2])
-                #     m = Mag(0.0, 0.0, 0.0)
-                #     g = Gyro(0.0, 0.0, 0.0)
-                #     # print(a.x, a.y, a.z)
-                #
-                #     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
-                #
-                # DataManager().set_pickle_data()
+
 
             except json.JSONDecodeError as e:
                 print("JSON decode error:", e)

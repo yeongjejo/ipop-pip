@@ -23,7 +23,7 @@ class DataManager():
     premodel_root_p = []
 
     premodel_output_vel = []
-    premodel_output_p = []
+    premodel_output_q = []
 
     totalcapture_vicon_ori = []
     totalcapture_vicon_pose = []
@@ -32,6 +32,7 @@ class DataManager():
     totalcapture_gt= []
 
     udp_switch = False
+    udp_sending = False
 
     # 싱글톤 설정
     def __new__(cls, *args, **kwargs):

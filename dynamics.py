@@ -220,22 +220,23 @@ class PhysicsOptimizer:
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
 
-                # if pos[1] <= self.params['floor_y']:
-                #     J = self.model.calc_point_Jacobian(q, joint_id)
-                #     v = self.model.calc_point_velocity(q, qdot, joint_id)
-                #     Gs1.append(-self.params['delta_t'] * J)
-                #     # hs1.append(v - [-1.0, 0, -1.0])
-                #     hs1.append(v - [-1e-1, 0, -1e-1])
-                #     Gs1.append(self.params['delta_t'] * J)
-                #     # hs1.append(-v + [1.0, 1e2, 1.0])
-                #     hs1.append(-v + [1e-1, 1e2, 1e-1])
-
-                th = -np.log(min(stable, 0.84999) / 0.85)
-                th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
-                Gs1.append(-self.params['delta_t'] * J)
-                hs1.append(v - [-th, th_y, -th])
-                Gs1.append(self.params['delta_t'] * J)
-                hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
+                if check_rbdl:
+                    if pos[1] <= self.params['floor_y']:
+                        J = self.model.calc_point_Jacobian(q, joint_id)
+                        v = self.model.calc_point_velocity(q, qdot, joint_id)
+                        Gs1.append(-self.params['delta_t'] * J)
+                        # hs1.append(v - [-1.0, 0, -1.0])
+                        hs1.append(v - [-5e-1, 0, -5e-1])
+                        Gs1.append(self.params['delta_t'] * J)
+                        # hs1.append(-v + [1.0, 1e2, 1.0])
+                        hs1.append(-v + [5e-1, 1e2, 5e-1])
+                else:
+                    th = -np.log(min(stable, 0.84999) / 0.85)
+                    th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
+                    Gs1.append(-self.params['delta_t'] * J)
+                    hs1.append(v - [-th, th_y, -th])
+                    Gs1.append(self.params['delta_t'] * J)
+                    hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
 
         # GRF friction cone constraint
         if True:
@@ -247,6 +248,9 @@ class PhysicsOptimizer:
         if True:
             M = self.model.calc_M(q)
             h = self.model.calc_h(q, qdot)
+            # print(M)
+            # print(h)
+            # print('-'*50)
             A_ = np.hstack((-M, Js.T, np.eye(self.model.qdot_size)))
             b_ = h
             

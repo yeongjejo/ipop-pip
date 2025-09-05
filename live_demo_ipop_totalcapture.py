@@ -73,7 +73,7 @@ if __name__ == '__main__':
             RMB = RMI.matmul(q).matmul(RSB)
             RMB2 = RMI.matmul(q2).matmul(RSB2)
 
-            if not DataManager().udp_switch:
+            if not DataManager().udp_switch and not DataManager().udp_sending:
                 # clock.tick(60)
                 # print(art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)))
 
@@ -98,56 +98,55 @@ if __name__ == '__main__':
                 TARGET_PORT = 5005
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(data, (TARGET_IP, TARGET_PORT))
+                DataManager().udp_sending = True
 
-            else:
+            elif DataManager().udp_switch:
                 aM = a.mm(RMI2.t())
                 pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=False)
-                # pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
+                pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
 
 
-                # pose2 = art.math.rotation_matrix_to_axis_angle(pose2).view(-1, 72)
+                pose2 = art.math.rotation_matrix_to_axis_angle(pose2).view(-1, 72)
                 pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
 
 
                 q = art.math.axis_angle_to_quaternion(pose)
-                # q2 = art.math.axis_angle_to_quaternion(pose2)
+                q2 = art.math.axis_angle_to_quaternion(pose2)
                 bone_seq = [0, 3, 6, 9, 12, 15, 13, 16, 18, 20, 14, 17, 19, 21, 1, 4, 7, 2, 5, 8]
 
                 send_data = []
                 send_data2 = []
-                # for index in bone_seq:
-                #     p = [0.0, 0.0, 0.0]
-                #     p2 = [0.0, 0.0, 0.0]
-                #     if index == 0:
-                #         p = tran.view(-1, 3).tolist()[0]
-                #         p2 = tran2.view(-1, 3).tolist()[0]
+                for index in bone_seq:
+                    p = [0.0, 0.0, 0.0]
+                    p2 = [0.0, 0.0, 0.0]
+                    if index == 0:
+                        p = tran.view(-1, 3).tolist()[0]
+                        p2 = tran2.view(-1, 3).tolist()[0]
                 #
-                #     rotation = q[index].tolist()
-                #     frame_bone_data = {
-                #         "time": "1",
-                #         "name": "test",
-                #         "position": p,
-                #         "rotation": rotation,
-                #         # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
-                #         "acc": [0.0, 0.0, 0.0]
-                #     }
-                #     send_data.append(frame_bone_data)
-                #
-                #     frame_bone_data2 = {
-                #         "time": "1",
-                #         "name": "test",
-                #         "position": p2,
-                #         "rotation": q2[index].tolist(),
-                #         # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
-                #         "acc": [0.0, 0.0, 0.0]
-                #     }
-                #     send_data2.append(frame_bone_data2)
+                    rotation = q[index].tolist()
+                    frame_bone_data = {
+                        "time": "1",
+                        "name": "test",
+                        "position": p,
+                        "rotation": rotation,
+                        # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
+                        "acc": [0.0, 0.0, 0.0]
+                    }
+                    send_data.append(frame_bone_data)
 
-                # for
+                    frame_bone_data2 = {
+                        "time": "1",
+                        "name": "test",
+                        "position": p2,
+                        "rotation": q2[index].tolist(),
+                        # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
+                        "acc": [0.0, 0.0, 0.0]
+                    }
+                    send_data2.append(frame_bone_data2)
 
                 # print(send_data)\\
-                # data = json.dumps(send_data).encode("utf-8")
-                # data2 = json.dumps(send_data2).encode("utf-8")
+                data = json.dumps(send_data).encode("utf-8")
+                data2 = json.dumps(send_data2).encode("utf-8")
                 # # data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
                 # # print(data)
                 #
@@ -156,9 +155,14 @@ if __name__ == '__main__':
                 # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 # sock.sendto(data, (TARGET_IP, TARGET_PORT))
                 # #
-                # TARGET_PORT = 5007
-                # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                # sock.sendto(data2, (TARGET_IP, TARGET_PORT))
+                TARGET_PORT = 5007
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.sendto(data, (TARGET_IP, TARGET_PORT))
+
+                TARGET_PORT = 5008
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.sendto(data2, (TARGET_IP, TARGET_PORT))
+
                 # # #
                 TARGET_PORT = 5006
                 data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
@@ -166,6 +170,7 @@ if __name__ == '__main__':
                 sock.sendto(data, (TARGET_IP, TARGET_PORT))
 
                 DataManager().udp_switch = False
+                DataManager().udp_sending = False
                 i += 1
 
 

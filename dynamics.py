@@ -69,32 +69,29 @@ class PhysicsOptimizer:
 
     def map_value_to_0_1(self, value):
         """
-        Maps a value in the range [-0.85, -0.90] to the range [0, 1].
-        - A value near -0.85 will return a result close to 0.
-        - A value near -0.90 will return a result close to 1.
+        Maps a value in the range [-1.0, -0.8] to the range [1, 0].
+        - A value near -1.0 will return a result close to 1.
+        - A value near -0.8 will return a result close to 0.
+        - Values outside the range are clamped to 1 or 0.
         """
-        if not (-0.90 <= value <= -0.85):
-            # Optional: Handle out-of-range values.
-            # You could clamp the value, return an error, or raise an exception.
-            # Here, we'll just clamp it to the defined range.
-            if value > -0.85:
-                return 0.0
-            elif value < -0.90:
-                return 1.0
+        # Clamp out-of-range values
+        if value <= -1.0:
+            return 1.0
+        elif value >= -0.5:
+            return 0.0
 
-        # Linear interpolation formula: y = mx + c
-        return (-20 * value) - 17
+        # Linear interpolation: result = (value - min) / (max - min)
+        # Inverse direction because -1.0 maps to 1 and -0.8 maps to 0
+        return (-0.5- value) / (-0.5 + 1.0)  # or (value + 1.0) / 0.2
 
-    def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, model_grf, return_grf=False):
+    def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, return_grf=False):
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
         # self.tetee.append(jvel.numpy()[0])
         # self.save_vector_to_csv(jvel.numpy()[0], self.csv_path)
 
         v_ref = jvel.numpy()
         c_ref = contact.sigmoid().numpy()
-        print(model_grf)
-        print(c_ref)
-        print('-'*30)
+
         a_ref = acc.numpy()
         q = self.q
         qdot = self.qdot
@@ -246,7 +243,7 @@ class PhysicsOptimizer:
 
                 if check_rbdl:
                     new_stable = self.map_value_to_0_1(pos[1])
-                    print(new_stable, joint_name, new_stable > 0.5)
+                    print(new_stable, joint_name, new_stable > 0.5, pos[1])
 
                     if joint_name == 'LFOOT' and new_stable > 0.5:
                         contact_check = 1

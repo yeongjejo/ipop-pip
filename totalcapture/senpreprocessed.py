@@ -50,7 +50,7 @@ class TotalcaptureIMUData():
 
 
     def setTotalcaptureIMUData(self):
-        file_path = "./totalcapture/output_quat_accel.csv"  # 저장된 csv 경로
+        file_path = "totalcapture/output_quat_accel.csv"  # 저장된 csv 경로
         frames = self.parse_quat_accel_csv(file_path)
 
         bone_seq = ["Hips", "Spine3", "Head", "LeftArm", "LeftForeArm", "LeftHand", "RightArm", "RightForeArm", "RightHand", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot"]

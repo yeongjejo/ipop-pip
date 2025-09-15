@@ -123,7 +123,7 @@ class PIP(torch.nn.Module):
         return pose_opt, tran_opt
 
     @torch.no_grad()
-    def forward_frame(self, glb_acc, glb_rot, check_rbdl, return_grf=False):
+    def forward_frame(self, glb_acc, glb_rot, model_grf, check_rbdl, return_grf=False):
         r"""
         Forward. Currently only support 1 subject.
 
@@ -184,6 +184,7 @@ class PIP(torch.nn.Module):
         pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
         joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
 
+
         #
 
         # if not check_rbdl:
@@ -192,5 +193,5 @@ class PIP(torch.nn.Module):
 
 
         # TODO: multiple people
-        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), check_rbdl,
+        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), check_rbdl, model_grf,
                                                       return_grf=return_grf)

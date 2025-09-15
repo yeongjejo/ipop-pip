@@ -4,6 +4,7 @@ import pybullet as p
 import articulate as art
 from articulate.utils.bullet import *
 from articulate.utils.rbdl import *
+from data_manager import DataManager
 from utils import *
 from qpsolvers import solve_qp
 from config import paths
@@ -66,13 +67,34 @@ class PhysicsOptimizer:
         self.q = None
         self.qdot = np.zeros(self.model.qdot_size)
 
-    def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, return_grf=False):
+    def map_value_to_0_1(self, value):
+        """
+        Maps a value in the range [-0.85, -0.90] to the range [0, 1].
+        - A value near -0.85 will return a result close to 0.
+        - A value near -0.90 will return a result close to 1.
+        """
+        if not (-0.90 <= value <= -0.85):
+            # Optional: Handle out-of-range values.
+            # You could clamp the value, return an error, or raise an exception.
+            # Here, we'll just clamp it to the defined range.
+            if value > -0.85:
+                return 0.0
+            elif value < -0.90:
+                return 1.0
+
+        # Linear interpolation formula: y = mx + c
+        return (-20 * value) - 17
+
+    def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, model_grf, return_grf=False):
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
         # self.tetee.append(jvel.numpy()[0])
         # self.save_vector_to_csv(jvel.numpy()[0], self.csv_path)
 
         v_ref = jvel.numpy()
         c_ref = contact.sigmoid().numpy()
+        print(model_grf)
+        print(c_ref)
+        print('-'*30)
         a_ref = acc.numpy()
         q = self.q
         qdot = self.qdot
@@ -80,7 +102,7 @@ class PhysicsOptimizer:
         if q is None:
             self.q = q_ref
             if return_grf:
-                return pose, torch.zeros(3), [], None
+                return pose, torch.zeros(3), [], None, 3
             else:
           
                 return pose, torch.zeros(3)
@@ -213,7 +235,9 @@ class PhysicsOptimizer:
                     hs1.append(-v + [1e-1, 1e2, 1e-1])
 
         # contacting foot velocity
+        contact_check = 0
         if True:
+            # for joint_name, stable in zip(['LFOOT', 'RFOOT'], model_grf):
             for joint_name, stable in zip(['LFOOT', 'RFOOT'], c_ref):
                 joint_id = vars(Body)[joint_name]
                 pos = self.model.calc_body_position(q, joint_id)
@@ -221,16 +245,50 @@ class PhysicsOptimizer:
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
 
                 if check_rbdl:
-                    if pos[1] <= self.params['floor_y']:
-                        J = self.model.calc_point_Jacobian(q, joint_id)
-                        v = self.model.calc_point_velocity(q, qdot, joint_id)
-                        Gs1.append(-self.params['delta_t'] * J)
-                        # hs1.append(v - [-1.0, 0, -1.0])
-                        hs1.append(v - [-5e-1, 0, -5e-1])
-                        Gs1.append(self.params['delta_t'] * J)
-                        # hs1.append(-v + [1.0, 1e2, 1.0])
-                        hs1.append(-v + [5e-1, 1e2, 5e-1])
+                    new_stable = self.map_value_to_0_1(pos[1])
+                    print(new_stable, joint_name, new_stable > 0.5)
+
+                    if joint_name == 'LFOOT' and new_stable > 0.5:
+                        contact_check = 1
+                    elif joint_name == 'RFOOT' and contact_check == 0 and new_stable > 0.5:
+                        contact_check = 2
+                    elif joint_name == 'RFOOT' and contact_check == 1 and new_stable > 0.5:
+                        contact_check = 3
+                    th = -np.log(min(new_stable, 0.84999) / 0.85)
+                    th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
+                    Gs1.append(-self.params['delta_t'] * J)
+                    hs1.append(v - [-th, th_y, -th])
+                    Gs1.append(self.params['delta_t'] * J)
+                    hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
+
+
+                    # if pos[1] <= -0.85:
+                    # # if pos[1] <= self.params['floor_y']:
+                    #     if joint_name == 'LFOOT':
+                    #         contact_check = 1
+                    #     elif joint_name == 'RFOOT' and contact_check == 0:
+                    #         contact_check = 2
+                    #     elif joint_name == 'RFOOT' and contact_check == 1:
+                    #         contact_check = 3
+                    #     J = self.model.calc_point_Jacobian(q, joint_id)
+                    #     v = self.model.calc_point_velocity(q, qdot, joint_id)
+                    #     Gs1.append(-self.params['delta_t'] * J)
+                    #     # hs1.append(v - [-1.0, 0, -1.0])
+                    #     # hs1.append(v - [-5e-1, 0, -5e-1])
+                    #     hs1.append(v - [-1e-1, 0, -1e-1])
+                    #     Gs1.append(self.params['delta_t'] * J)
+                    #     hs1.append(-v + [1e-1, 100, 1e-1])
+                    #     # hs1.append(-v + [1.0, 1e2, 1.0])
+                    #     # hs1.append(-v + [5e-1, 1e2, 5e-1])
+
+
                 else:
+                    if joint_name == 'LFOOT' and stable > 0.5:
+                        contact_check = 1
+                    elif joint_name == 'RFOOT' and contact_check == 0 and stable > 0.5:
+                        contact_check = 2
+                    elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.5:
+                        contact_check = 3
                     th = -np.log(min(stable, 0.84999) / 0.85)
                     th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                     Gs1.append(-self.params['delta_t'] * J)
@@ -253,7 +311,7 @@ class PhysicsOptimizer:
             # print('-'*50)
             A_ = np.hstack((-M, Js.T, np.eye(self.model.qdot_size)))
             b_ = h
-            
+
         # if True:
         #     if nc > 0:False
         #     M = self.model.calc_M(q)
@@ -267,6 +325,8 @@ class PhysicsOptimizer:
         h_ = np.concatenate((hs1, hs2, hs3))
         P_ = art.math.block_diagonal_matrix_np([np.dot(As1.T, As1), np.dot(As2.T, As2), np.dot(As3.T, As3)])
         q_ = np.concatenate((-np.dot(As1.T, bs1), -np.dot(As2.T, bs2), -np.dot(As3.T, bs3)))
+
+
 
         # fast solvers are less accurate/robust, and may fail
         init = self.last_x if len(self.last_x) == len(q_) else None
@@ -326,5 +386,7 @@ class PhysicsOptimizer:
             # print(pose.shape)
             # print('---')
             # return pose, torch.tensor(self.test1), cj, grf
-            return pose_opt, tran_opt, cj, grf
+            DataManager().pre_position = [tran_opt.tolist()[0], tran_opt.tolist()[1], tran_opt.tolist()[2]]
+            # print(tran_opt.tolist())
+            return pose_opt, tran_opt, cj, grf, contact_check
         return pose_opt, tran_opt

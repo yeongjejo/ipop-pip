@@ -234,7 +234,7 @@ class TotalcaptureViconData():
                     DataManager().premodel_root_p.append(frame_pose)
 
                 frame_bone_data = {
-                    "time": "1",
+                    "time": "5",
                     "name": "test",
                     # "position": [0.0, 0.0, 0.0],
                     "position": frame_pose,

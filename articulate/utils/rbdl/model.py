@@ -271,3 +271,8 @@ class RBDLModel:
         :param qddot: Robot acceleration qddot in shape [dof].
         """
         rbdl.UpdateKinematics(self.model, q, qdot, qddot)
+
+    def testCal(self, q, qdot, qddot):
+        tau = np.zeros(self.qdot_size)
+        cs = rbdl.ConstraintSet()
+        rbdl.ForwardDynamicsConstraintsDirect(self.model, q, qdot, tau)

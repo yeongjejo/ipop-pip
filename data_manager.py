@@ -31,6 +31,8 @@ class DataManager():
 
     totalcapture_gt= []
 
+    pre_position = [0.0, 0.0, 0.0]
+
     udp_switch = False
     udp_sending = False
 

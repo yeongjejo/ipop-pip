@@ -10,6 +10,9 @@ import json
 from totalcapture.premodel_server import PreModelServer
 from totalcapture.senpreprocessed import TotalcaptureIMUData, TotalcaptureViconData
 
+from velocitymodel.utils import TotalCaptureDataset
+from velocitymodel.module.module import *
+
 
 class IMUSet:
     g = 9.8
@@ -50,8 +53,8 @@ def tpose_calibration_ipop_2024(imu_set):
     return RMI, RSB, RMI2, RSB2
 
 
-  
-  
+
+
 
 if __name__ == '__main__':
     PreModelServer().start()
@@ -61,6 +64,23 @@ if __name__ == '__main__':
     print(1111)
 
     clock = Clock()
+    #
+    # # 속도 모델 가져오기
+    # model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250912-TC-Transformer.ckpt")
+    # model.eval()
+    # data_path = "./velocitymodel/preprocessed_data"
+    # velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name="version_tc.pickle")
+
+    # 속도 모델 가져오기
+    model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250913-TC_GRF-Transformer-v4.ckpt")
+    model.eval()
+    data_path = "./velocitymodel/preprocessed_data"
+    velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name="version_tc_s5_acting3.pickle")
+
+    x, y = velocity_input_list[0]
+    print(x)
+    print(y)
+    print('-' * 30)
 
     while True:
         imu_set = IMUSet()
@@ -68,7 +88,17 @@ if __name__ == '__main__':
         net2 = PIP()
         RMI, RSB, RMI2, RSB2 = tpose_calibration_ipop_2024(imu_set)
         i = 0
+        x_p = 0.0
+        y_p = 11.0
+        z_p = 0.0
+        pre_speed = [0.0, 0.0, 0.0]
         while i < len(DataManager.totalcapture_imu_acc):
+        # while i < 500:
+            if i == 0:
+                x_p = 0.0
+                y_p = 11.0
+                z_p = 0.0
+                pre_speed = [0.0, 0.0, 0.0]
             q, a, q2 = imu_set.get_ipop(i)
             RMB = RMI.matmul(q).matmul(RSB)
             RMB2 = RMI.matmul(q2).matmul(RSB2)
@@ -79,13 +109,36 @@ if __name__ == '__main__':
 
                 # 프리 모델이 적용할 데이터 전송
                 send_data = []
+
+                # x, y = velocity_input_list[i]
+                # x = x.unsqueeze(0)
+                #
+                # x = x.to("cpu")
+                # with torch.no_grad():
+                #     outputs = model(x).squeeze(0)
+                #     outputs = velocity_input_list.denormalize_tensor(outputs)
+                #     model_v = outputs.cpu().tolist()
+                #
+                # pre_speed[0] = model_v[0]
+                # pre_speed[1] = model_v[1]
+                # pre_speed[2] = model_v[2]
+                #
+                # x_p = x_p + model_v[0] * 1.6e-2
+                # y_p = y_p + model_v[1] * 1.6e-2
+                # z_p = z_p + model_v[2] * 1.6e-2
+
+
                 for test in art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)):
                     test = test.tolist()
-                    # print(test)
+                    # print(DataManager().premodel_root_p[i])
+                    # print(DataManager().pre_position)
+                    # print('-'*30)
                     frame_bone_data = {
-                        "time": "1",
+                        "time": "5",
                         "name": "test",
+                        # "position": [-x_p / 0.0254 / 3.0, y_p / 0.0254 / 3.0, -z_p / 0.0254 / 3.0],
                         "position": DataManager().premodel_root_p[i],
+                        # "position": DataManager().pre_position,
                         "rotation": [test[0], test[1], test[2], test[3]],
                         "acc": [0.0, 0.0, 0.0]
                     }
@@ -102,16 +155,28 @@ if __name__ == '__main__':
 
             elif DataManager().udp_switch:
                 aM = a.mm(RMI2.t())
-                pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=False)
-                pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
+
+                x, y = velocity_input_list[i]
+                print(y)
+                x = x.unsqueeze(0)
 
 
-                pose2 = art.math.rotation_matrix_to_axis_angle(pose2).view(-1, 72)
+                x = x.to("cpu")
+                with torch.no_grad():
+                    outputs = model(x).squeeze(0)
+                    model_grf = outputs.cpu().tolist()
+
+                pose, tran, cj, grf, contact_check = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), model_grf, return_grf=True, check_rbdl=False)
+                # pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
+
+
+
+                # pose2 = art.math.rotation_matrix_to_axis_angle(pose2).view(-1, 72)
                 pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
 
 
                 q = art.math.axis_angle_to_quaternion(pose)
-                q2 = art.math.axis_angle_to_quaternion(pose2)
+                # q2 = art.math.axis_angle_to_quaternion(pose2)
                 bone_seq = [0, 3, 6, 9, 12, 15, 13, 16, 18, 20, 14, 17, 19, 21, 1, 4, 7, 2, 5, 8]
 
                 send_data = []
@@ -121,11 +186,11 @@ if __name__ == '__main__':
                     p2 = [0.0, 0.0, 0.0]
                     if index == 0:
                         p = tran.view(-1, 3).tolist()[0]
-                        p2 = tran2.view(-1, 3).tolist()[0]
+                        # p2 = tran2.view(-1, 3).tolist()[0]
                 #
                     rotation = q[index].tolist()
                     frame_bone_data = {
-                        "time": "1",
+                        "time": contact_check,
                         "name": "test",
                         "position": p,
                         "rotation": rotation,
@@ -134,19 +199,19 @@ if __name__ == '__main__':
                     }
                     send_data.append(frame_bone_data)
 
-                    frame_bone_data2 = {
-                        "time": "1",
-                        "name": "test",
-                        "position": p2,
-                        "rotation": q2[index].tolist(),
-                        # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
-                        "acc": [0.0, 0.0, 0.0]
-                    }
-                    send_data2.append(frame_bone_data2)
+                    # frame_bone_data2 = {
+                    #     "time": "1",
+                    #     "name": "test",
+                    #     "position": p2,
+                    #     "rotation": q2[index].tolist(),
+                    #     # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
+                    #     "acc": [0.0, 0.0, 0.0]
+                    # }
+                    # send_data2.append(frame_bone_data2)
 
                 # print(send_data)\\
                 data = json.dumps(send_data).encode("utf-8")
-                data2 = json.dumps(send_data2).encode("utf-8")
+                # data2 = json.dumps(send_data2).encode("utf-8")
                 # # data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
                 # # print(data)
                 #
@@ -159,9 +224,9 @@ if __name__ == '__main__':
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(data, (TARGET_IP, TARGET_PORT))
 
-                TARGET_PORT = 5008
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.sendto(data2, (TARGET_IP, TARGET_PORT))
+                # TARGET_PORT = 5008
+                # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                # sock.sendto(data2, (TARGET_IP, TARGET_PORT))
 
                 # # #
                 TARGET_PORT = 5006

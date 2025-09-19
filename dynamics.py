@@ -56,6 +56,8 @@ class PhysicsOptimizer:
         self.test1 = [0.0, 0.0, 0.0]
         self.test2 = [0.0, 0.0, 0.0]
 
+        self.index_test = 0
+
     # ▶ 실시간 데이터 저장 함수
     def save_vector_to_csv(self, vector, file_path):
         df = pd.DataFrame([vector], columns=['X', 'Y', 'Z'])
@@ -75,14 +77,14 @@ class PhysicsOptimizer:
         - Values outside the range are clamped to 1 or 0.
         """
         # Clamp out-of-range values
-        if value <= -1.0:
-            return 1.0
-        elif value >= -0.5:
-            return 0.0
+        if value <= -0.87:
+            return 0.99
+        elif value >= -0.8:
+            return 0.01
 
         # Linear interpolation: result = (value - min) / (max - min)
         # Inverse direction because -1.0 maps to 1 and -0.8 maps to 0
-        return (-0.5- value) / (-0.5 + 1.0)  # or (value + 1.0) / 0.2
+        return max((-0.8 - value) / (-0.8 + 0.87), 0.01)  # or (value + 1.0) / 0.2
 
     def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, return_grf=False):
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
@@ -234,24 +236,37 @@ class PhysicsOptimizer:
         # contacting foot velocity
         contact_check = 0
         if True:
-            # for joint_name, stable in zip(['LFOOT', 'RFOOT'], model_grf):
-            for joint_name, stable in zip(['LFOOT', 'RFOOT'], c_ref):
+            cref = DataManager().premodel_cref if check_rbdl else  c_ref
+            for joint_name, stable in zip(['LFOOT', 'RFOOT'], cref):
+            # for joint_name, stable in zip(['LANKLE', 'RANKLE'], c_ref):
                 joint_id = vars(Body)[joint_name]
                 pos = self.model.calc_body_position(q, joint_id)
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
+                new_stable = self.map_value_to_0_1(pos[1])
 
                 if check_rbdl:
-                    new_stable = self.map_value_to_0_1(pos[1])
-                    print(new_stable, joint_name, new_stable > 0.5, pos[1])
-
-                    if joint_name == 'LFOOT' and new_stable > 0.5:
+                    # # new_stable = self.map_value_to_0_1(pos[1])
+                    # print(new_stable, joint_name, stable)
+                    #
+                    if joint_name == 'LFOOT' and stable > 0.5:
+                    # if joint_name == 'LANKLE' and new_stable > 0.5:
                         contact_check = 1
-                    elif joint_name == 'RFOOT' and contact_check == 0 and new_stable > 0.5:
+                    # elif joint_name == 'RANKLE' and contact_check == 0 and new_stable > 0.5:
+                    elif joint_name == 'RFOOT' and contact_check == 0 and stable > 0.5:
                         contact_check = 2
-                    elif joint_name == 'RFOOT' and contact_check == 1 and new_stable > 0.5:
+                    # elif joint_name == 'RANKLE' and contact_check == 1 and new_stable > 0.5:
+                    elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.5:
                         contact_check = 3
-                    th = -np.log(min(new_stable, 0.84999) / 0.85)
+                    #
+                    # th = -np.log(min(new_stable, 0.84999) / 0.85)
+                    # th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
+                    # Gs1.append(-self.params['delta_t'] * J)
+                    # hs1.append(v - [-th, th_y, -th])
+                    # Gs1.append(self.params['delta_t'] * J)
+                    # hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
+
+                    th = -np.log(min(stable, 0.84999) / 0.85)
                     th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                     Gs1.append(-self.params['delta_t'] * J)
                     hs1.append(v - [-th, th_y, -th])
@@ -274,9 +289,14 @@ class PhysicsOptimizer:
                     #     # hs1.append(v - [-5e-1, 0, -5e-1])
                     #     hs1.append(v - [-1e-1, 0, -1e-1])
                     #     Gs1.append(self.params['delta_t'] * J)
-                    #     hs1.append(-v + [1e-1, 100, 1e-1])
+                    #     hs1.append(-v + [1e-1, 1e-1, 1e-1])
                     #     # hs1.append(-v + [1.0, 1e2, 1.0])
                     #     # hs1.append(-v + [5e-1, 1e2, 5e-1])
+                    # else:
+                    #     Gs1.append(-self.params['delta_t'] * J)
+                    #     hs1.append(v - [-1, 1, -1])
+                    #     Gs1.append(self.params['delta_t'] * J)
+                    #     hs1.append(-v + [1, 1, 1])
 
 
                 else:
@@ -286,12 +306,18 @@ class PhysicsOptimizer:
                         contact_check = 2
                     elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.5:
                         contact_check = 3
+
+                    # print(stable, pos[1])
+                    # print(new_stable, stable, joint_name, pos[1], self.index_test)
+                    # th = -np.log(min(stable, 0.84999) / 0.85)
                     th = -np.log(min(stable, 0.84999) / 0.85)
                     th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                     Gs1.append(-self.params['delta_t'] * J)
                     hs1.append(v - [-th, th_y, -th])
                     Gs1.append(self.params['delta_t'] * J)
                     hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
+
+        # print('----')
 
         # GRF friction cone constraint
         if True:
@@ -383,6 +409,8 @@ class PhysicsOptimizer:
             # print(pose.shape)
             # print('---')
             # return pose, torch.tensor(self.test1), cj, grf
+            # DataManager().pre_position = [0, 0, 0]
+
             DataManager().pre_position = [tran_opt.tolist()[0], tran_opt.tolist()[1], tran_opt.tolist()[2]]
             # print(tran_opt.tolist())
             return pose_opt, tran_opt, cj, grf, contact_check

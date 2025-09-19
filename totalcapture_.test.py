@@ -27,7 +27,6 @@ class IMUSet:
         r = DataManager().totalcapture_imu_r[i]
         premodel_r = DataManager().premodel_imu_r[i]
         a = DataManager().totalcapture_imu_acc[i]
-
         
         a = -torch.tensor(a) * 9.8 / 10.0                       # acceleration is reversed
         a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])
@@ -65,19 +64,13 @@ if __name__ == '__main__':
 
     clock = Clock()
     #
-    # # 속도 모델 가져오기
-    model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250912-TC-Transformer.ckpt")
-    model.eval()
+    #
     data_path = "./velocitymodel/preprocessed_data"
-    velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name="version_tc.pickle")
 
-    # 속도 모델 가져오기
-    # model = VelocityTFWModule.load_from_checkpoint("velocitymodel/checkpoints/250913-TC_GRF-Transformer-v4.ckpt")
-    # model.eval()
-    # data_path = "velocitymodel/preprocessed_data"
-    # velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name="version_tc_s5_acting3.pickle")
+    model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250916-TC-Transformer-v4.ckpt")
+    model.eval()
 
-    x, y = velocity_input_list[0]
+    velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name='', type='tc')
 
 
     while True:
@@ -87,17 +80,19 @@ if __name__ == '__main__':
         RMI, RSB, RMI2, RSB2 = tpose_calibration_ipop_2024(imu_set)
         i = 0
         x_p = 0.0
-        y_p = 11.0
+        y_p = 0.0
         z_p = 0.0
         pre_speed = [0.0, 0.0, 0.0]
 
         while i < len(DataManager.totalcapture_imu_acc):
-        # while i < 500:
+        # while i < 476:
             if i == 0:
                 x_p = 0.0
-                y_p = 11.0
+                y_p = 0.0
                 z_p = 0.0
                 pre_speed = [0.0, 0.0, 0.0]
+                # pre_position = [0.0, 11.0, 0.0]
+
             q, a, q2 = imu_set.get_ipop(i)
             RMB = RMI.matmul(q).matmul(RSB)
             RMB2 = RMI.matmul(q2).matmul(RSB2)
@@ -109,22 +104,31 @@ if __name__ == '__main__':
                 # 프리 모델이 적용할 데이터 전송
                 send_data = []
 
-                x, y = velocity_input_list[i]
+                x, _ = velocity_input_list[i]
                 x = x.unsqueeze(0)
 
                 x = x.to("cpu")
+
                 with torch.no_grad():
-                    outputs = model(x).squeeze(0)
-                    outputs = velocity_input_list.denormalize_tensor(outputs)
-                    model_v = outputs.cpu().tolist()
+                    pred_a = model(x)
+                    pred_a = pred_a.squeeze(0)
+                    pred_a = velocity_input_list.denormalize_tensor(pred_a)
+                    pred_a = pred_a.cpu().numpy()
 
-                pre_speed[0] = model_v[0]
-                pre_speed[1] = model_v[1]
-                pre_speed[2] = model_v[2]
+                pre_speed[0] = pre_speed[0] + pred_a[0]
+                pre_speed[1] = pre_speed[1] + pred_a[1]
+                pre_speed[2] = pre_speed[2] + pred_a[2]
 
-                x_p = x_p + model_v[0] * 1.6e-2
-                y_p = y_p + model_v[1] * 1.6e-2
-                z_p = z_p + model_v[2] * 1.6e-2
+                # print("모델 output : ", pred_a)
+                # print("속도 : ", pre_speed)
+                # print('-'*30)
+
+                x_p = x_p + pre_speed[0] * 0.016
+                y_p = y_p + pre_speed[1] * 0.016
+                z_p = z_p + pre_speed[2] * 0.016
+
+
+
 
 
                 for test in art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)):
@@ -153,17 +157,16 @@ if __name__ == '__main__':
                 DataManager().udp_sending = True
 
             elif DataManager().udp_switch:
+                # print(a[5], i)
+                # print('+++')
                 aM = a.mm(RMI2.t())
-
-                x, y = velocity_input_list[i]
-                x = x.unsqueeze(0)
-
-
-                x = x.to("cpu")
-                with torch.no_grad():
-                    outputs = model(x).squeeze(0)
-                    model_grf = outputs.cpu().tolist()
-
+                #
+                # x, _, _ = velocity_input_list[i]
+                # x = x.unsqueeze(0)
+                #
+                #
+                # x = x.to("cpu")
+                # with torch.no_grad():
                 pose, tran, cj, grf, contact_check = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(),  return_grf=True, check_rbdl=False)
                 # pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
 
@@ -252,3 +255,4 @@ if __name__ == '__main__':
             # # server_address = ('127.0.0.1', 8888)
             # sock.sendto(s.encode('utf-8'), server_address)
             #
+        break

@@ -55,6 +55,7 @@ class PreModelServer(threading.Thread):
                 for item in json_data:
                     DataManager().premodel_output_q.append(item['quaternion'])
                     DataManager().premodel_output_vel.append(item['velocity'])
+                    DataManager().premodel_cref = item['cref']
                 #     print(item['velocity'])
                 # print(DataManager().premodel_output_vel)
                 # print('----')

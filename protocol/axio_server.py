@@ -62,18 +62,18 @@ class AxioServer(threading.Thread):
                         continue
                     acc = item.get('acc', [0, 0, 0])
                     rotation = item.get('rotation', [0, 0, 0, 0])
-                    print(rotation)
 
-                #     sensor_part = SensorPart(part_num)
-                #     q = Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
-                #     a = Acc(acc[0], acc[1], acc[2])
-                #     m = Mag(0.0, 0.0, 0.0)
-                #     g = Gyro(0.0, 0.0, 0.0)
-                #     # print(a.x, a.y, a.z)
-                #
-                #     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
-                #
-                # DataManager().set_pickle_data()
+                    sensor_part = SensorPart(part_num)
+                    q = Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
+                    a = Acc(acc[0], acc[1], acc[2])
+                    m = Mag(0.0, 0.0, 0.0)
+                    g = Gyro(0.0, 0.0, 0.0)
+                    # print(a.x, a.y, a.z)
+
+                    DataManager().sensor_data = [sensor_part, [g, a, m, q]]
+
+                DataManager().setIpopIMUData()
+                DataManager().axioStart = True
 
             except json.JSONDecodeError as e:
                 print("JSON decode error:", e)

@@ -165,7 +165,7 @@ class PIP(torch.nn.Module):
 
         x = torch.cat([x, imu], dim=1)
         # x = torch.cat([test_pose, imu], dim=1)
-
+        # print(x)
         x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0),
                                                self.rnn_states[2])
         global_6d_pose = self.rnn3.linear2(x1[0])
@@ -180,18 +180,19 @@ class PIP(torch.nn.Module):
 
         # print(x1.shape)
         contact = self.rnn5.linear2(x1[0])
-
-        pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
-        joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
+        # #
+        # pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
+        # joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
+        #
+        # # TODO: multiple people
+        # return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), check_rbdl,
+        #                                               return_grf=return_grf)
 
 
         #
-
-        # if not check_rbdl:
-        pose[0] = art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().premodel_output_q)* 1.0)
-        joint_velocity[0] = torch.tensor(DataManager().premodel_output_vel)
-
+        pose = art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().premodel_output_q)* 1.0)
+        joint_velocity = torch.tensor(DataManager().premodel_output_vel)
 
         # TODO: multiple people
-        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), check_rbdl,
+        return self.dynamics_optimizer.optimize_frame(pose, joint_velocity, contact[0].cpu(), glb_acc.cpu(), check_rbdl,
                                                       return_grf=return_grf)

@@ -7,6 +7,7 @@ import time
 import socket
 import json
 
+from protocol.axio_server import AxioServer
 from totalcapture.premodel_server import PreModelServer
 from totalcapture.senpreprocessed import TotalcaptureIMUData, TotalcaptureViconData
 
@@ -22,15 +23,34 @@ class IMUSet:
         self.n_imus = 0
 
 
-    def get_ipop(self, i):
+    def get_ipop(self):
 
-        r = DataManager().totalcapture_imu_r[i]
-        premodel_r = DataManager().premodel_imu_r[i]
-        a = DataManager().totalcapture_imu_acc[i]
+        r = DataManager().ipop_imu_r
+        premodel_r = DataManager().premodel_imu_r
+        a = DataManager().ipop_imu_acc
 
-        
-        a = -torch.tensor(a) * 9.8 / 10.0                       # acceleration is reversed
-        a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])
+        a = torch.tensor(a)
+        #
+        # if self.n_imus == 0:
+        #     print("0번 : ", torch.tensor(a))
+
+
+        #
+        # a = -torch.tensor(a) * 9.8 / 10.0                       # acceleration is reversed
+        # # a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])
+        # a = r.bmm(a.unsqueeze(-1)).squeeze(-1)
+        # if self.n_imus == 0:
+        #     print("1번 : ", a)
+        # a[0] += torch.tensor([0., 0., 9.8])
+        # a[1] += torch.tensor([0., 0., 9.8])
+        # a[2] += torch.tensor([9.8, 0., 0.])
+        # a[3] += torch.tensor([9.8, 0., 0.])
+        # a[4] += torch.tensor([0., -9.8, 0.])
+        # a[5] += torch.tensor([9.8, 0., 0.])
+        # if self.n_imus == 0:
+        #     print("2번 : ",a)
+        # self.n_imus += 1
+        # print(a[5])
 
         return r, a, premodel_r
 
@@ -38,12 +58,18 @@ class IMUSet:
 
 
 def tpose_calibration_ipop_2024(imu_set):
-    RSI = imu_set.get_ipop(0)[0][5].view(3, 3).t()
+    RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
+
+    RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+    RMI2 = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+
+
+    # RMI2 = torch.tensor([[0, -1, 0], [-1, 0, 0], [0, 0, 1.]]).mm(RSI)
 
     # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-    RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)
-    RMI2 = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, 1.]]).mm(RSI)
-    RIS, _, RIS2 = imu_set.get_ipop(0)
+    # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)
+    # RMI2 = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, 1.]]).mm(RSI)
+    RIS, _, RIS2 = imu_set.get_ipop()
 
 
     RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
@@ -58,74 +84,54 @@ def tpose_calibration_ipop_2024(imu_set):
 
 if __name__ == '__main__':
     PreModelServer().start()
-    TotalcaptureIMUData().setTotalcaptureIMUData()
-    print(222)
-    TotalcaptureViconData().setTotalcaptureViconData()
-    print(1111)
+    AxioServer().start()
 
-    clock = Clock()
+    # # TotalcaptureIMUData().setTotalcaptureIMUData()
+    # # print(222)
+    # TotalcaptureViconData().setTotalcaptureViconData()
+    # print(1111)
     #
-    # # 속도 모델 가져오기
-    # model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250912-TC-Transformer.ckpt")
-    # model.eval()
-    # data_path = "./velocitymodel/preprocessed_data"
-    # velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name="version_tc.pickle")
-
-    # 속도 모델 가져오기
-    model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250913-TC_GRF-Transformer-v4.ckpt")
-    model.eval()
-    data_path = "./velocitymodel/preprocessed_data"
-    velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name="version_tc_s5_acting3.pickle")
-
-    x, y = velocity_input_list[0]
-    print(x)
-    print(y)
-    print('-' * 30)
-
+    # clock = Clock()
+    #
     while True:
+        if DataManager().axioStart is not True:
+            continue
         imu_set = IMUSet()
         net = PIP()
         net2 = PIP()
         RMI, RSB, RMI2, RSB2 = tpose_calibration_ipop_2024(imu_set)
         i = 0
-        x_p = 0.0
-        y_p = 11.0
-        z_p = 0.0
-        pre_speed = [0.0, 0.0, 0.0]
-        while i < len(DataManager.totalcapture_imu_acc):
-        # while i < 500:
-            if i == 0:
-                x_p = 0.0
-                y_p = 11.0
-                z_p = 0.0
-                pre_speed = [0.0, 0.0, 0.0]
-            q, a, q2 = imu_set.get_ipop(i)
-            RMB = RMI.matmul(q).matmul(RSB)
-            RMB2 = RMI.matmul(q2).matmul(RSB2)
+
+        imu_switch = True
+        pre_q = None
+        pre_a = None
+        pre_RMB = None
+        pre_RMB2 = None
+
+        # while i < len(DataManager.totalcapture_imu_acc):
+        while True:
+
+            q = pre_q
+            a = pre_a
+            RMB = pre_RMB
+            RMB2 = pre_RMB2
 
             if not DataManager().udp_switch and not DataManager().udp_sending:
+                if imu_switch:
+                    imu_switch = False
+                    pre_q, pre_a, pre_q2 = imu_set.get_ipop()
+                    pre_RMB = RMI.matmul(pre_q).matmul(RSB)
+                    pre_RMB2 = RMI.matmul(pre_q2).matmul(RSB2)
+                    q = pre_q
+                    a = pre_a
+                    RMB = pre_RMB
+                    RMB2 = pre_RMB2
+
                 # clock.tick(60)
                 # print(art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)))
 
                 # 프리 모델이 적용할 데이터 전송
                 send_data = []
-
-                # x, y = velocity_input_list[i]
-                # x = x.unsqueeze(0)
-                #
-                # x = x.to("cpu")
-                # with torch.no_grad():
-                #     outputs = model(x).squeeze(0)
-                #     outputs = velocity_input_list.denormalize_tensor(outputs)
-                #     model_v = outputs.cpu().tolist()
-                #
-                # pre_speed[0] = model_v[0]
-                # pre_speed[1] = model_v[1]
-                # pre_speed[2] = model_v[2]
-                #
-                # x_p = x_p + model_v[0] * 1.6e-2
-                # y_p = y_p + model_v[1] * 1.6e-2
-                # z_p = z_p + model_v[2] * 1.6e-2
 
 
                 for test in art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)):
@@ -137,13 +143,12 @@ if __name__ == '__main__':
                         "time": "5",
                         "name": "test",
                         # "position": [-x_p / 0.0254 / 3.0, y_p / 0.0254 / 3.0, -z_p / 0.0254 / 3.0],
-                        "position": DataManager().premodel_root_p[i],
-                        # "position": DataManager().pre_position,
+                        # "position": DataManager().premodel_root_p[i],
+                        "position": DataManager().pre_position,
                         "rotation": [test[0], test[1], test[2], test[3]],
                         "acc": [0.0, 0.0, 0.0]
                     }
                     send_data.append(frame_bone_data)
-                # print(send_data)
 
                 data = json.dumps(send_data).encode("utf-8")
 
@@ -155,18 +160,11 @@ if __name__ == '__main__':
 
             elif DataManager().udp_switch:
                 aM = a.mm(RMI2.t())
+                # print(a)
+                # print(aM)
+                # aM = a
 
-                x, y = velocity_input_list[i]
-                print(y)
-                x = x.unsqueeze(0)
-
-
-                x = x.to("cpu")
-                with torch.no_grad():
-                    outputs = model(x).squeeze(0)
-                    model_grf = outputs.cpu().tolist()
-
-                pose, tran, cj, grf, contact_check = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), model_grf, return_grf=True, check_rbdl=False)
+                pose, tran, cj, grf, contact_check = net.forward_frame(a.view(1, 6, 3).float(), q.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=False)
                 # pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
 
 
@@ -229,15 +227,16 @@ if __name__ == '__main__':
                 # sock.sendto(data2, (TARGET_IP, TARGET_PORT))
 
                 # # #
-                TARGET_PORT = 5006
-                data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.sendto(data, (TARGET_IP, TARGET_PORT))
+                # TARGET_PORT = 5006
+                # data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
+                # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                # sock.sendto(data, (TARGET_IP, TARGET_PORT))
 
                 DataManager().udp_switch = False
                 DataManager().udp_sending = False
-                i += 1
 
+                imu_switch = True
+                i += 1
 
 
             # 유니티 전송용

@@ -53,6 +53,7 @@ class AxioServer(threading.Thread):
                 # 바이트 데이터를 문자열로 디코딩 후 JSON 파싱
                 json_data = json.loads(data.decode('utf-8'))
                 # 전체 데이터 반복
+                tpose_check = False
                 for item in json_data:
                     name = item.get('name', 'Unknown')
                     part_num = 0
@@ -62,6 +63,7 @@ class AxioServer(threading.Thread):
                         continue
                     acc = item.get('acc', [0, 0, 0])
                     rotation = item.get('rotation', [0, 0, 0, 0])
+                    tpose_check = item.get('time')
 
                     sensor_part = SensorPart(part_num)
                     q = Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
@@ -74,6 +76,7 @@ class AxioServer(threading.Thread):
 
                 DataManager().setIpopIMUData()
                 DataManager().axioStart = True
+                DataManager().tpose_check = tpose_check
 
             except json.JSONDecodeError as e:
                 print("JSON decode error:", e)

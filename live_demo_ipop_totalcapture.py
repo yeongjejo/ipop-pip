@@ -107,17 +107,34 @@ if __name__ == '__main__':
         pre_a = None
         pre_RMB = None
         pre_RMB2 = None
+        reset = 'start'
+
+        print(0)
 
         # while i < len(DataManager.totalcapture_imu_acc):
         while True:
+            print(5)
+            if DataManager().tpose_check:
+                time.sleep(2)
+                DataManager().axioStart = False
+                imu_switch = True
+                DataManager().udp_switch = False
+                DataManager().udp_sending = False
+                DataManager().pre_position = [0.0, 0.0, 0.0]
+                print('reset')
+                break
 
             q = pre_q
             a = pre_a
             RMB = pre_RMB
             RMB2 = pre_RMB2
-
-            if not DataManager().udp_switch and not DataManager().udp_sending:
+            print(4)
+            # print(DataManager().udp_switch, DataManager().udp_sending)
+            if not DataManager().udp_sending:
+            # if not DataManager().udp_switch and not DataManager().udp_sending:
+                print(1)
                 if imu_switch:
+                    print(2)
                     imu_switch = False
                     pre_q, pre_a, pre_q2 = imu_set.get_ipop()
                     pre_RMB = RMI.matmul(pre_q).matmul(RSB)
@@ -137,11 +154,11 @@ if __name__ == '__main__':
                 for test in art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)):
                     test = test.tolist()
                     # print(DataManager().premodel_root_p[i])
-                    # print(DataManager().pre_position)
+                    print(DataManager().pre_position)
                     # print('-'*30)
                     frame_bone_data = {
                         "time": "5",
-                        "name": "test",
+                        "name": reset,
                         # "position": [-x_p / 0.0254 / 3.0, y_p / 0.0254 / 3.0, -z_p / 0.0254 / 3.0],
                         # "position": DataManager().premodel_root_p[i],
                         "position": DataManager().pre_position,
@@ -159,6 +176,8 @@ if __name__ == '__main__':
                 DataManager().udp_sending = True
 
             elif DataManager().udp_switch:
+                # print(a)
+                reset = 'end'
                 aM = a.mm(RMI2.t())
                 # print(a)
                 # print(aM)

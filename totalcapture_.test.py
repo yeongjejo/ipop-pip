@@ -167,7 +167,7 @@ if __name__ == '__main__':
                 #
                 # x = x.to("cpu")
                 # with torch.no_grad():
-                pose, tran, cj, grf, contact_check = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(),  return_grf=True, check_rbdl=False)
+                pose, tran, cj, grf, contact_check = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(),  return_grf=True, check_rbdl=True)
                 # pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
 
 

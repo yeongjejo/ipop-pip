@@ -38,6 +38,7 @@ class DataManager():
     pre_position = [0.0, 0.0, 0.0]
 
     axioStart = False
+    tpose_check = False
 
     udp_switch = False
     udp_sending = False

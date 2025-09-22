@@ -300,11 +300,11 @@ class PhysicsOptimizer:
 
 
                 else:
-                    if joint_name == 'LFOOT' and stable > 0.5:
+                    if joint_name == 'LFOOT' and stable > 0.85:
                         contact_check = 1
-                    elif joint_name == 'RFOOT' and contact_check == 0 and stable > 0.5:
+                    elif joint_name == 'RFOOT' and contact_check == 0 and stable > 0.85:
                         contact_check = 2
-                    elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.5:
+                    elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.85:
                         contact_check = 3
 
                     # print(stable, pos[1])
@@ -356,6 +356,7 @@ class PhysicsOptimizer:
         x = solve_qp(P_, q_, G_, h_, A_, b_, solver='quadprog', initvals=init)
 
         if x is None or np.linalg.norm(x) > 10000:
+            print(1111111111111111111)
             x = solve_qp(P_, q_, G_, h_, A_, b_, solver='cvxopt', initvals=init)
 
         qddot = x[:self.model.qdot_size]

@@ -411,7 +411,6 @@ class PhysicsOptimizer:
             # print('---')
             # return pose, torch.tensor(self.test1), cj, grf
             # DataManager().pre_position = [0, 0, 0]
-
             DataManager().pre_position = [tran_opt.tolist()[0], tran_opt.tolist()[1], tran_opt.tolist()[2]]
             # print(tran_opt.tolist())
             return pose_opt, tran_opt, cj, grf, contact_check

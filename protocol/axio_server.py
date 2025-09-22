@@ -82,6 +82,4 @@ class AxioServer(threading.Thread):
                 print("JSON decode error:", e)
                 print("Raw data:", data)
 
-# #
-# if __name__ == '__main__':
-#     AxioServer().start()
+

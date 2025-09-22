@@ -54,9 +54,6 @@ class PhysicsOptimizer:
         self.df.to_csv(self.csv_path, index=False)
 
         self.test1 = [0.0, 0.0, 0.0]
-        self.test2 = [0.0, 0.0, 0.0]
-
-        self.index_test = 0
 
     # ▶ 실시간 데이터 저장 함수
     def save_vector_to_csv(self, vector, file_path):
@@ -88,8 +85,7 @@ class PhysicsOptimizer:
 
     def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, return_grf=False):
         q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
-        # self.tetee.append(jvel.numpy()[0])
-        # self.save_vector_to_csv(jvel.numpy()[0], self.csv_path)
+
 
         v_ref = jvel.numpy()
         c_ref = contact.sigmoid().numpy()
@@ -148,20 +144,6 @@ class PhysicsOptimizer:
             As1.append(A)  # 72 * 75
             bs1.append(b)  # 72
 
-        # joint position PD controller (using root velocity + ref pose to determine target joint position)
-        if False:
-            for joint_name in ['ROOT', 'LHIP', 'RHIP', 'SPINE1', 'LKNEE', 'RKNEE', 'SPINE2', 'LANKLE', 'RANKLE',
-                               'SPINE3', 'LFOOT', 'RFOOT', 'NECK', 'LCLAVICLE', 'RCLAVICLE', 'HEAD', 'LSHOULDER',
-                               'RSHOULDER', 'LELBOW', 'RELBOW', 'LWRIST', 'RWRIST', 'LHAND', 'RHAND']:
-                joint_id = vars(Body)[joint_name]
-                cur_vel = self.model.calc_point_velocity(q, qdot, joint_id)
-                cur_pos = self.model.calc_body_position(q, joint_id)
-                tar_pos = self.model.calc_body_position(q_ref, joint_id) - q_ref[:3] + q[:3] + v_ref[0] * self.params['delta_t']
-                a_des = 3600 * (tar_pos - cur_pos) - 60 * cur_vel
-                A = self.model.calc_point_Jacobian(q, joint_id)
-                b = -self.model.calc_point_acceleration(q, qdot, np.zeros(75), joint_id) + a_des
-                As1.append(A * 2)
-                bs1.append(b * 2)
 
         # joint position PD controller (using joint velocity to determine target joint position)
         if True:
@@ -176,33 +158,6 @@ class PhysicsOptimizer:
                 b = -self.model.calc_point_acceleration(q, qdot, np.zeros(75), joint_id) + a_des
                 As1.append(A * self.params['coeff_jvel'])
                 bs1.append(b * self.params['coeff_jvel'])
-
-        # joint velocity (without Jdot * qdot term)
-        if False:
-            for joint_name, v in zip(
-                    ['ROOT', 'LHIP', 'RHIP', 'SPINE1', 'LKNEE', 'RKNEE', 'SPINE2', 'LANKLE', 'RANKLE',
-                     'SPINE3', 'LFOOT', 'RFOOT', 'NECK', 'LCLAVICLE', 'RCLAVICLE', 'HEAD', 'LSHOULDER',
-                     'RSHOULDER', 'LELBOW', 'RELBOW', 'LWRIST', 'RWRIST', 'LHAND', 'RHAND'], v_ref):
-                joint_id = vars(Body)[joint_name]
-                A = self.model.calc_point_Jacobian(q, joint_id)
-                b = (-self.model.calc_point_velocity(q, qdot, joint_id) + v) / self.params['delta_t']
-                As1.append(A * 2)
-                bs1.append(b * 2)
-
-        # IMU acceleration
-        if False:
-            for joint_name, a in zip(['LWRIST', 'RWRIST', 'LKNEE', 'RKNEE', 'HEAD', 'ROOT'], a_ref):
-                joint_id = vars(Body)[joint_name]
-                offset = np.zeros(3)
-                A = self.model.calc_point_Jacobian(q, joint_id, offset)
-                b = -self.model.calc_point_acceleration(q, qdot, np.zeros(self.model.qdot_size), joint_id, offset) + a
-                bs1.append(b * self.params['coeff_acc'])
-                As1.append(A * self.params['coeff_acc'])
-
-        # lambda size
-        if False:
-            As2.append(np.eye(nc * 3) * self.params['coeff_lambda_old'])
-            bs2.append(np.zeros(nc * 3))
 
         # Signorini’s conditions of lambda
         if True:
@@ -243,28 +198,14 @@ class PhysicsOptimizer:
                 pos = self.model.calc_body_position(q, joint_id)
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
-                new_stable = self.map_value_to_0_1(pos[1])
 
                 if check_rbdl:
-                    # # new_stable = self.map_value_to_0_1(pos[1])
-                    # print(new_stable, joint_name, stable)
-                    #
                     if joint_name == 'LFOOT' and stable > 0.5:
-                    # if joint_name == 'LANKLE' and new_stable > 0.5:
                         contact_check = 1
-                    # elif joint_name == 'RANKLE' and contact_check == 0 and new_stable > 0.5:
                     elif joint_name == 'RFOOT' and contact_check == 0 and stable > 0.5:
                         contact_check = 2
-                    # elif joint_name == 'RANKLE' and contact_check == 1 and new_stable > 0.5:
                     elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.5:
                         contact_check = 3
-                    #
-                    # th = -np.log(min(new_stable, 0.84999) / 0.85)
-                    # th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
-                    # Gs1.append(-self.params['delta_t'] * J)
-                    # hs1.append(v - [-th, th_y, -th])
-                    # Gs1.append(self.params['delta_t'] * J)
-                    # hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
 
                     th = -np.log(min(stable, 0.84999) / 0.85)
                     th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
@@ -273,30 +214,6 @@ class PhysicsOptimizer:
                     Gs1.append(self.params['delta_t'] * J)
                     hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
 
-
-                    # if pos[1] <= -0.85:
-                    # # if pos[1] <= self.params['floor_y']:
-                    #     if joint_name == 'LFOOT':
-                    #         contact_check = 1
-                    #     elif joint_name == 'RFOOT' and contact_check == 0:
-                    #         contact_check = 2
-                    #     elif joint_name == 'RFOOT' and contact_check == 1:
-                    #         contact_check = 3
-                    #     J = self.model.calc_point_Jacobian(q, joint_id)
-                    #     v = self.model.calc_point_velocity(q, qdot, joint_id)
-                    #     Gs1.append(-self.params['delta_t'] * J)
-                    #     # hs1.append(v - [-1.0, 0, -1.0])
-                    #     # hs1.append(v - [-5e-1, 0, -5e-1])
-                    #     hs1.append(v - [-1e-1, 0, -1e-1])
-                    #     Gs1.append(self.params['delta_t'] * J)
-                    #     hs1.append(-v + [1e-1, 1e-1, 1e-1])
-                    #     # hs1.append(-v + [1.0, 1e2, 1.0])
-                    #     # hs1.append(-v + [5e-1, 1e2, 5e-1])
-                    # else:
-                    #     Gs1.append(-self.params['delta_t'] * J)
-                    #     hs1.append(v - [-1, 1, -1])
-                    #     Gs1.append(self.params['delta_t'] * J)
-                    #     hs1.append(-v + [1, 1, 1])
 
 
                 else:
@@ -307,8 +224,6 @@ class PhysicsOptimizer:
                     elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.85:
                         contact_check = 3
 
-                    # print(stable, pos[1])
-                    # print(new_stable, stable, joint_name, pos[1], self.index_test)
                     # th = -np.log(min(stable, 0.84999) / 0.85)
                     th = -np.log(min(stable, 0.84999) / 0.85)
                     th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
@@ -329,18 +244,9 @@ class PhysicsOptimizer:
         if True:
             M = self.model.calc_M(q)
             h = self.model.calc_h(q, qdot)
-            # print(M)
-            # print(h)
-            # print('-'*50)
             A_ = np.hstack((-M, Js.T, np.eye(self.model.qdot_size)))
             b_ = h
 
-        # if True:
-        #     if nc > 0:False
-        #     M = self.model.calc_M(q)
-        #     h = self.model.calc_h(q, qdot)
-        #     A_ = np.hstack((-M, Js.T, np.eye(self.model.qdot_size)))
-        #     b_ = h
 
         As1, bs1, As2, bs2, As3, bs3 = np.vstack(As1), np.concatenate(bs1), np.vstack(As2), np.concatenate(bs2), np.vstack(As3), np.concatenate(bs3)
         Gs1, hs1, Gs2, hs2, Gs3, hs3 = np.vstack(Gs1), np.concatenate(hs1), np.vstack(Gs2), np.concatenate(hs2), np.vstack(Gs3), np.concatenate(hs3)
@@ -356,7 +262,6 @@ class PhysicsOptimizer:
         x = solve_qp(P_, q_, G_, h_, A_, b_, solver='quadprog', initvals=init)
 
         if x is None or np.linalg.norm(x) > 10000:
-            print(1111111111111111111)
             x = solve_qp(P_, q_, G_, h_, A_, b_, solver='cvxopt', initvals=init)
 
         qddot = x[:self.model.qdot_size]
@@ -367,51 +272,30 @@ class PhysicsOptimizer:
         q = q + qdot * self.params['delta_t']
 
 
-        # print(v_ref)
-        # print(qdot)
-        # print(self.params['delta_t'])
-        # print('-'*10)
+
         self.q = q
         self.qdot = qdot
         self.last_x = x
 
         if self.debug:
-            # self.clock.tick(60)   # please install pygame
             set_pose(self.id_robot, q)
             self.params = read_debug_param_values_from_bullet()
 
-            if False:   # visualize GRF (no smoothing)
-                p.removeAllUserDebugItems()
-                for point, force in zip(collision_points, GRF.reshape(-1, 3)):
-                    p.addUserDebugLine(point, point + force * 1e-2, [1, 0, 0])
-
-        # print(q)
         pose_opt, tran_opt = rbdl_to_smpl(q)
-        # print(tran_opt)
-        # print('-'*5)
+
         pose_opt = torch.from_numpy(pose_opt).float()[0]
         tran_opt = torch.from_numpy(tran_opt).float()[0]
 
-        # self.test2 += qdot[:3] * self.params['delta_t']
         self.test1 += v_ref[0] * self.params['delta_t']
-        # print(self.test1[0]-tran_opt[0], self.test1[1]-tran_opt[1], self.test1[2]-tran_opt[2])
-        # print(self.test1[0]-self.test2[0], self.test1[1]-self.test2[1], self.test1[2]-self.test2[2])
-        # print("-"*50)
+
 
         if not return_grf:
             return pose_opt, tran_opt
         else:
             cj = [vars(art.SMPLJoint)[_].value for _ in collision_joints]
             grf = torch.from_numpy(GRF).float().view(-1, 4, 3).sum(dim=1) if len(cj) > 0 else None
-            # if check_rbdl:
-            #     return pose_opt, tran_opt, cj, grf
-            # return pose_opt, torch.tensor(self.test1), cj, grf
-            # print(pose_opt.shape)
-            # print(pose.shape)
-            # print('---')
-            # return pose, torch.tensor(self.test1), cj, grf
-            # DataManager().pre_position = [0, 0, 0]
+
             DataManager().pre_position = [tran_opt.tolist()[0], tran_opt.tolist()[1], tran_opt.tolist()[2]]
-            # print(tran_opt.tolist())
+
             return pose_opt, tran_opt, cj, grf, contact_check
         return pose_opt, tran_opt

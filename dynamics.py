@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import pybullet as p
+
 import articulate as art
 from articulate.utils.bullet import *
 from articulate.utils.rbdl import *
@@ -9,6 +10,8 @@ from utils import *
 from qpsolvers import solve_qp
 from config import paths
 import pandas as pd
+
+import math
 
 
 class PhysicsOptimizer:
@@ -23,6 +26,7 @@ class PhysicsOptimizer:
         self.tetee = []
         self.debug = debug
         self.model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
+        self.zero_model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
         self.params = read_debug_param_values_from_json(paths.physics_parameter_file)
         self.friction_constraint_matrix = np.array([[np.sqrt(2), -mu, 0],
                                                     [-np.sqrt(2), -mu, 0],
@@ -55,6 +59,8 @@ class PhysicsOptimizer:
 
         self.test1 = [0.0, 0.0, 0.0]
 
+        self.p_frame_list = [0.0, 0.0, 0.0]
+
     # ▶ 실시간 데이터 저장 함수
     def save_vector_to_csv(self, vector, file_path):
         df = pd.DataFrame([vector], columns=['X', 'Y', 'Z'])
@@ -83,9 +89,32 @@ class PhysicsOptimizer:
         # Inverse direction because -1.0 maps to 1 and -0.8 maps to 0
         return max((-0.8 - value) / (-0.8 + 0.87), 0.01)  # or (value + 1.0) / 0.2
 
-    def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, return_grf=False):
-        q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
+    def rotation_matrix_to_euler(self, R):
+        """
+        회전행렬 R(3x3) → 오일러각 (roll, pitch, yaw)
+        ZYX 순서 (yaw → pitch → roll) 기준
+        """
+        assert R.shape == (3, 3)
 
+        # pitch 계산 (asin 때문에 범위 체크 필요)
+        pitch = -np.arcsin(R[2, 0])
+
+        if abs(R[2, 0]) < 0.999999:  # 특이점 회피
+            roll = np.arctan2(R[2, 1], R[2, 2])
+            yaw = np.arctan2(R[1, 0], R[0, 0])
+        else:
+            # Gimball lock
+            roll = np.arctan2(-R[1, 2], R[1, 1])
+            yaw = 0.0
+
+        return roll, pitch, yaw
+
+
+    def optimize_frame(self, pose, jvel, contact, acc, check_rbdl, return_grf=False):
+        # print(pose)
+        q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
+        # print(q_ref)
+        # print('+'*30)
 
         v_ref = jvel.numpy()
         c_ref = contact.sigmoid().numpy()
@@ -94,18 +123,31 @@ class PhysicsOptimizer:
         q = self.q
         qdot = self.qdot
 
+
+
         if q is None:
             self.q = q_ref
             if return_grf:
                 return pose, torch.zeros(3), [], None, 3
             else:
-          
                 return pose, torch.zeros(3)
-            return pose, torch.zeros(3)
+
             
 
         # determine the contact joints and points
+
+        # print("Q : ", len(self.q))
+        # formatted = [f"{x:.3f}" for x in self.q]
+        # print("Q : ", formatted )
         self.model.update_kinematics(q, qdot, np.zeros(self.model.qdot_size))
+        self.zero_model.update_kinematics(q_ref, qdot, np.zeros(self.model.qdot_size))
+
+        # for join in ['ROOT', 'LFOOT', 'RFOOT']:
+        #     joint_id = vars(Body)[join]
+        #     pos = self.zero_model.calc_body_position(q, joint_id)
+        #     print(joint_id, " : ", pos[0] * 12.0, ", ", pos[1] * 12.0 + 11.0, ", ", pos[2] * 12.0)
+        # print('-'*30)
+
         Js = [np.empty((0, self.model.qdot_size))]
         collision_points, collision_joints = [], []
         for joint_name in self.test_contact_joints:
@@ -191,28 +233,116 @@ class PhysicsOptimizer:
         # contacting foot velocity
         contact_check = 0
         if True:
-            cref = DataManager().premodel_cref if check_rbdl else  c_ref
-            for joint_name, stable in zip(['LFOOT', 'RFOOT'], cref):
+            for joint_name, stable in zip(['LFOOT', 'RFOOT'], c_ref):
             # for joint_name, stable in zip(['LANKLE', 'RANKLE'], c_ref):
                 joint_id = vars(Body)[joint_name]
                 pos = self.model.calc_body_position(q, joint_id)
                 J = self.model.calc_point_Jacobian(q, joint_id)
+                # print(J.shape)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
+                # print(v)
 
                 if check_rbdl:
-                    if joint_name == 'LFOOT' and stable > 0.5:
-                        contact_check = 1
-                    elif joint_name == 'RFOOT' and contact_check == 0 and stable > 0.5:
-                        contact_check = 2
-                    elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.5:
-                        contact_check = 3
+                    # 1) 발끝 속도
+                    v_th = 0.5
+                    v = self.zero_model.calc_point_velocity(q_ref, qdot, joint_id)
+                    p_v = np.exp(-(np.linalg.norm(v)**2) / (2*v_th**2))
 
-                    th = -np.log(min(stable, 0.84999) / 0.85)
+                    # 2) 발 위치
+                    h_th = 0.3
+                    #py = self.zero_model.calc_body_position(q_ref, joint_id).tolist()[1]
+                    py = self.model.calc_body_position(q, joint_id).tolist()[1]
+                    #if py < 0.0:
+                    #   py = 0.0
+                    p_h = np.exp(-(py**2) / (2*h_th**2))
+
+                    # 3) 각도
+                    # roll, pitch, yaw = self.rotation_matrix_to_euler(self.zero_model.calc_body_orientation(q_ref, joint_id)) #롤 피치 요 순서대로 리턴되는지 확인해야됨!(피치 롤이 바뀐거같아)
+                    roll, pitch, yaw = art.math.rotation_matrix_to_euler_angle_np(self.zero_model.calc_body_orientation(q_ref, joint_id)).tolist()[0]
+                    # print('roll', roll)
+                    # theta = np.sqrt(roll**2**2)
+                    theta = np.sqrt(pitch**2 + yaw**2)
+                    # print(theta)
+                    theta_th = 0.17
+                    p_f = np.exp(-(theta**2) / (2*theta_th**2))
+
+                    # 4) 연속 시간 충족
+                    #p_frame = p_v * p_h * p_f
+                    p_frame = p_v * p_h
+                    self.p_frame_list.append(p_frame)
+                    self.p_frame_list.pop(0)
+                    p_t = sum(self.p_frame_list) / 2.0
+                    #p_t = sum(self.p_frame_list) / 3.0
+
+                    # 5) 발끝 접선 속도
+                    sigma_tan = 0.08
+                    vL = self.zero_model.calc_point_velocity(q_ref, qdot, joint_id)
+                    n = vL / np.linalg.norm(vL)
+                    v_tan = vL - n * np.dot(v, n)
+                    p_sl = np.exp(-(np.linalg.norm(v_tan)**2) / (2*sigma_tan**2))
+
+                    # 6) 자코비안
+                    J_check = self.zero_model.calc_point_Jacobian(q_ref, joint_id, self.zero_model.calc_body_position(q_ref, joint_id))
+                    j_root = J_check[:, :6]
+                    j_q = J_check[:, 6:]
+
+                    b_check = -j_q @ qdot[6:]
+
+                    v_root, residuals, rank, s = np.linalg.lstsq(j_root, b_check, rcond=None)
+                    p_res = None
+                    if residuals.size > 0:
+                        p_res = np.sqrt(residuals[0])
+                    else:
+                        r = j_root @ v_root - b_check
+                        p_res = np.linalg.norm(r)
+
+                    # 최종 결합
+                    w_v = 1.0
+                    w_h = 1.0
+                    w_theta = 1.0
+                    w_t = 1.0
+                    w_res = 1.0
+                    w_sl = 1.0
+                    # 1차
+                    #new_stable = (w_v*p_v + w_h*p_h + w_theta*p_f + w_t*p_t) / (w_v + w_h + w_theta + w_t)
+                    new_stable = (w_v * p_v + w_h * p_h + w_t * p_t) / (w_v + w_h + w_t)
+                    # # 2차
+
+                    # print('p_v : ', p_v)
+                    # print('p_h : ', p_h)
+                    # print('p_f : ', p_f)
+                    # print('p_t : ', p_t)
+                    # print('p_res : ', p_res)
+                    # print('p_sl : ', p_sl)
+                    # new_stable = (w_v*p_v + w_h*p_h + w_theta*p_f + w_t*p_t + w_res*p_res + w_sl*p_sl) / (w_v + w_h + w_theta + w_t + w_res + w_sl)
+
+                    # 지면 접촉 확률 확인용 록,
+                    #print(joint_name + "ipop 계산 : ", new_stable)
+                    if joint_name == 'LFOOT':
+                        #print(p_h, stable, sep=',')
+                        pass
+                    if joint_name == 'RFOOT':
+                        #print(p_h, stable, sep=',')
+                        pass
+                        #print(joint_name + "PIP 계산 : ", stable)
+                    #print(joint_name + "Velocity 계산 : ", p_v)
+                    #print(joint_name + "PIP 계산 : ", stable)
+    
+                    # 0.85 이상이면 땅에 고정 이하이면 값이 작을수록 많이 이동 할수 있음
+                    th = -np.log(min(new_stable, 0.84999) / 0.85)
                     th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                     Gs1.append(-self.params['delta_t'] * J)
                     hs1.append(v - [-th, th_y, -th])
                     Gs1.append(self.params['delta_t'] * J)
                     hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
+
+                    # IPOP 지면 접촉 확률 알고리즘
+                    if joint_name == 'LFOOT' and new_stable > 0.45:
+                        contact_check = 1
+                    elif joint_name == 'RFOOT' and contact_check == 0 and new_stable > 0.45:
+                        contact_check = 2
+                    elif joint_name == 'RFOOT' and contact_check == 1 and new_stable > 0.45:
+                        contact_check = 3
 
 
 
@@ -232,7 +362,6 @@ class PhysicsOptimizer:
                     Gs1.append(self.params['delta_t'] * J)
                     hs1.append(-v + [th, max(th, th_y) + 1e-6, th])
 
-        # print('----')
 
         # GRF friction cone constraint
         if True:

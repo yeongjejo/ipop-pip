@@ -12,6 +12,14 @@ from config import paths, amass_data
 
 
 class DataManager():
+    
+    totalcapture_data_list = ['acting3', 'freestyle1', 'freestyle3', 'rom3', 'walking2']
+    selected_totalcapture_data = 0 # 0~4 까지 원하는 케이스 선택
+
+    set_ip = "192.168.201.10"
+    
+    time_setting = 0.005 # 플레이 시간
+    
     _instance = None  # 싱글톤 용도
     __check = True
     __sensor_data = {part: [] for part in SensorPart}

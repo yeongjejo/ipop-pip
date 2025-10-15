@@ -4,12 +4,6 @@ import threading
 
 
 from data_manager import DataManager
-from sensor.acc import Acc
-from sensor.gyro import Gyro
-from sensor.mag import Mag
-from sensor.quaternion import Quaternion
-from sensor.sensor_part import SensorPart
-
 
 class PreModelServer(threading.Thread):
     def __init__(self):

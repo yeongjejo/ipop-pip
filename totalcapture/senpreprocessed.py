@@ -50,7 +50,8 @@ class TotalcaptureIMUData():
 
 
     def setTotalcaptureIMUData(self):
-        file_path = "totalcapture/output_quat_accel.csv"  # 저장된 csv 경로
+        path = 'totalcapture/data/' + DataManager().totalcapture_data_list[DataManager().selected_totalcapture_data] + '/'
+        file_path = path+"output_quat_accel.csv"  # 저장된 csv 경로
         frames = self.parse_quat_accel_csv(file_path)
 
         bone_seq = ["Hips", "Spine3", "Head", "LeftArm", "LeftForeArm", "LeftHand", "RightArm", "RightForeArm", "RightHand", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot"]
@@ -122,12 +123,15 @@ class TotalcaptureViconData():
 
 
     def setTotalcaptureViconData(self):
+        path = 'totalcapture/data/' + DataManager().totalcapture_data_list[DataManager().selected_totalcapture_data] + '/'
         # 사용 예시
-        pose = self.load_joint_data("gt_skel_gbl_pos.txt", ['x', 'y', 'z'])
-        ori = self.load_joint_data("gt_skel_gbl_ori.txt", ['x', 'y', 'z', 'w'])
+        pose = self.load_joint_data(path + "gt_skel_gbl_pos.txt", ['x', 'y', 'z'])
+        ori = self.load_joint_data(path + "gt_skel_gbl_ori.txt", ['x', 'y', 'z', 'w'])
 
         first_q = []
+        # print(pose.shape)
         for (idx, pose_row), (_, ori_row) in zip(pose.iterrows(), ori.iterrows()):
+            # print(idx)
             axio_bone_seq = [
                 [pose_row.Hips, ori_row.Hips],
                 [pose_row.Spine1, ori_row.Spine1],
@@ -240,7 +244,9 @@ class TotalcaptureViconData():
                     "position": frame_pose,
                     "rotation": self.quat_mul(q, first_q[i]).tolist(),
                     # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
-                    "acc": [0.0, 0.0, 0.0]
+                    "acc": [0.0, 0.0, 0.0],
+                    "lp": [],
+                    "rp": [],
                 }
                 sned_data.append(frame_bone_data)
 

@@ -1,6 +1,6 @@
 import torch
 from pygame.time import Clock
-from net import PIP
+from ipop_net import PIP
 import articulate as art
 from data_manager import DataManager
 import time
@@ -64,16 +64,6 @@ if __name__ == '__main__':
     print('데이터셋 준비중..(2/2)')
     print('데이터셋 완료!!!')
 
-    clock = Clock()
-    # #
-    # #
-    # data_path = "./velocitymodel/preprocessed_data"
-    #
-    # # model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250916-TC-Transformer-v4.ckpt")
-    # model = VelocityTFWModule.load_from_checkpoint("./velocitymodel/checkpoints/250916-TC-Transformer-v3.ckpt")
-    # model.eval()
-    #
-    # velocity_input_list = TotalCaptureDataset(data_path=data_path, mode='valid', name='', type='tc')
 
 
     while True:
@@ -82,18 +72,12 @@ if __name__ == '__main__':
         net2 = PIP()
         RMI, RSB, RMI2, RSB2 = tpose_calibration_ipop_2024(imu_set)
         i = 0
-        x_p = 0.0
-        y_p = 0.0
-        z_p = 0.0
         pre_speed = [0.0, 0.0, 0.0]
 
         while i < len(DataManager.totalcapture_imu_acc):
             time.sleep(DataManager().time_setting)
         # while i < 476:
             if i == 0:
-                x_p = 0.0
-                y_p = 0.0
-                z_p = 0.0
                 pre_speed = [0.0, 0.0, 0.0]
                 # pre_position = [0.0, 11.0, 0.0]
 
@@ -102,52 +86,19 @@ if __name__ == '__main__':
             RMB2 = RMI.matmul(q2).matmul(RSB2)
 
             if not DataManager().udp_switch and not DataManager().udp_sending:
-                #print(1)
-                # clock.tick(60)
-                # print(art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)))
 
                 # 프리 모델이 적용할 데이터 전송
                 send_data = []
-                #
-                # x, _ = velocity_input_list[i]
-                # x = x.unsqueeze(0)
-                #
-                # x = x.to("cpu")
-                #
-                # with torch.no_grad():
-                #     pred_a = model(x)
-                #     pred_a = pred_a.squeeze(0)
-                #     pred_a = velocity_input_list.denormalize_tensor(pred_a)
-                #     pred_a = pred_a.cpu().numpy()
-                #
-                # pre_speed[0] = pre_speed[0] + pred_a[0]
-                # pre_speed[1] = pre_speed[1] + pred_a[1]
-                # pre_speed[2] = pre_speed[2] + pred_a[2]
-                #
-                # # print("모델 output : ", pred_a)
-                # # print("속도 : ", pre_speed)
-                # # print('-'*30)
-                #
-                # x_p = x_p + pre_speed[0] * 0.016
-                # y_p = y_p + pre_speed[1] * 0.016
-                # z_p = z_p + pre_speed[2] * 0.016
-
-
                 for test in art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)):
                     test = test.tolist()
-                    # print(DataManager().premodel_root_p[i])
-                    # print(DataManager().pre_position)
-                    # print('-'*30)
                     frame_bone_data = {
                         "time": "5",
                         "name": "test",
-                        # "position": [-x_p / 0.0254 / 3.0, y_p / 0.0254 / 3.0, -z_p / 0.0254 / 3.0],
-                        # "position": DataManager().premodel_root_p[i],
-                        "position": DataManager().pre_position,
+                        "position": [0.0, 0.0, 0.0],
                         "rotation": [test[0], test[1], test[2], test[3]],
                         "acc": [0.0, 0.0, 0.0],
-                        "lp": [0.0, 0.0, 0.0],
-                        "rp": [0.0, 0.0, 0.0],
+                        "lp": [],
+                        "rp": [],
                     }
                     send_data.append(frame_bone_data)
 
@@ -161,12 +112,10 @@ if __name__ == '__main__':
                 DataManager().udp_sending = True
 
             elif DataManager().udp_switch:
-                #print(2)
+                # print(2)
                 # print(a[5], i)
                 # print('+++')
                 aM = a.mm(RMI2.t())
-                # print(RMB.shpae)
-                # print(aM.shpae)
                 #
                 # x, _, _ = velocity_input_list[i]
                 # x = x.unsqueeze(0)
@@ -174,7 +123,8 @@ if __name__ == '__main__':
                 #
                 # x = x.to("cpu")
                 # with torch.no_grad():
-                pose, tran, cj, grf, contact_check = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(),  return_grf=True, check_rbdl=True)
+                position  = DataManager().totalcapture_gt[i][0]['position']
+                pose, tran, l_foot_p, r_foot_p, contact_check = net.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), position=position, return_grf=True, check_rbdl=True)
                 # pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
 
 
@@ -186,47 +136,55 @@ if __name__ == '__main__':
                 q = art.math.axis_angle_to_quaternion(pose)
                 # q2 = art.math.axis_angle_to_quaternion(pose2)
                 bone_seq = [0, 3, 6, 9, 12, 15, 13, 16, 18, 20, 14, 17, 19, 21, 1, 4, 7, 2, 5, 8]
-
                 contact_check = 0
+                contact_left = 0
+                contact_right = 0
+
                 th = 0.4
-                root_x = DataManager().totalcapture_gt[i][0]['position'][0]
-                root_y = DataManager().totalcapture_gt[i][0]['position'][1]
-                root_z = DataManager().totalcapture_gt[i][0]['position'][2]
-                #print(root_x, root_y, root_z, sep=',')
                 if DataManager().totalcapture_gt[i][-4]['position'][1] > th:
                     #print('GT LFOOT: 0.0')
-                    #print(0)
-                    contact_check = 0
+                    pass
                 elif DataManager().totalcapture_gt[i][-4]['position'][1] < 0.0:
                     #print('GT LFOOT: 1.0')
-                    #print(1)
                     contact_check = 1
+                    contact_left = 1
                 else:
                     #print('GT LFOOT: ', DataManager().totalcapture_gt[i][-4]['position'][1])
-                    #print(1)
                     contact_check = 1
+                    contact_left = 1
 
                 if DataManager().totalcapture_gt[i][-1]['position'][1] > th:
                     #print('GT RFOOT: 0.0')
-                    #print(0)
                     pass
                 elif DataManager().totalcapture_gt[i][-1]['position'][1] < 0.0:
-                    # print('GT RFOOT: 1.0')
-                    #print(1)
+                    #print('GT RFOOT: 1.0')
+                    contact_right = 1
                     if contact_check == 0:
                         contact_check = 2
                     elif contact_check == 1:
                         contact_check = 3
                 else:
-                    # print('GT RFOOT: ', DataManager().totalcapture_gt[i][-1]['position'][1])
-                    #print(1)
-                    pass
+                    #print('GT RFOOT: ', DataManager().totalcapture_gt[i][-1]['position'][1])
+                    contact_right = 1
+                    if contact_check == 0:
+                        contact_check = 2
+                    elif contact_check == 1:
+                        contact_check = 3
 
-                #    if contact_check == 0:
-                #        contact_check = 2
-                #    elif contact_check == 1:
-                #        contact_check = 3
-                
+                #print(contact_left, contact_right,sep=',')
+                left_x_pos = DataManager().totalcapture_gt[i][-4]['position'][0]/20-0.55026
+                left_y_pos = DataManager().totalcapture_gt[i][-4]['position'][1]/20-0.55026
+                left_z_pos = DataManager().totalcapture_gt[i][-4]['position'][2]/20-0.55026
+
+                right_x_pos = DataManager().totalcapture_gt[i][-1]['position'][0] / 20 - 0.55026
+                right_y_pos = DataManager().totalcapture_gt[i][-1]['position'][1] / 20 - 0.55026
+                right_z_pos = DataManager().totalcapture_gt[i][-1]['position'][2] / 20 - 0.55026
+                #print(left_x_pos, left_y_pos, left_z_pos, sep=',')
+                #print(right_x_pos, right_y_pos, right_z_pos, sep=',')
+
+                #print(left_y_pos,right_y_pos, sep=',')
+                #print('-' * 30)
+
                 send_data = []
                 send_data2 = []
                 for index in bone_seq:
@@ -242,10 +200,9 @@ if __name__ == '__main__':
                         "name": "test",
                         "position": p,
                         "rotation": rotation,
-                        # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
                         "acc": [0.0, 0.0, 0.0],
-                        "lp": [0.0, 0.0, 0.0],
-                        "rp": [0.0, 0.0, 0.0],
+                        "lp": l_foot_p,
+                        "rp": r_foot_p,
                     }
                     send_data.append(frame_bone_data)
 
@@ -265,7 +222,7 @@ if __name__ == '__main__':
                 # # data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
                 # # print(data)
                 #
-                TARGET_IP = DataManager().set_ip
+                TARGET_IP =  DataManager().set_ip
                 # TARGET_PORT = 5005
                 # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 # sock.sendto(data, (TARGET_IP, TARGET_PORT))
@@ -280,8 +237,6 @@ if __name__ == '__main__':
 
                 # # #
                 TARGET_PORT = 5006
-
-                #print('-' * 30)
                 data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(data, (TARGET_IP, TARGET_PORT))
@@ -289,20 +244,3 @@ if __name__ == '__main__':
                 DataManager().udp_switch = False
                 DataManager().udp_sending = False
                 i += 1
-
-
-            # 유니티 전송용
-            # tran = tran.view(-1, 3)
-            #
-            # # send motion to Unity
-            # s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
-            #     ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
-            #     ','.join(['%d' % v for v in cj]) + '#' + \
-            #     (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
-            # # print(','.join(['%g' % v for v in test_hand_q]) + '#')
-            #
-            # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            # server_address = ('192.168.201.199', 8888)
-            # # server_address = ('127.0.0.1', 8888)
-            # sock.sendto(s.encode('utf-8'), server_address)
-            #

@@ -6,6 +6,7 @@ from config import *
 from data_manager import DataManager
 from utils import *
 from dynamics import PhysicsOptimizer
+# from ipop_dynamics import PhysicsOptimizer
 from torch.nn.functional import relu
 import torch
 

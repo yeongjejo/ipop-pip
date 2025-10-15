@@ -1,6 +1,6 @@
 import torch
 from pygame.time import Clock
-from net import PIP
+from ipop_net import PIP
 import articulate as art
 from data_manager import DataManager
 import time
@@ -106,6 +106,7 @@ if __name__ == '__main__':
 
         # while i < len(DataManager.totalcapture_imu_acc):
         while True:
+            print(1111)
             time.sleep(DataManager().time_setting)
             if DataManager().tpose_check:
                 time.sleep(2)
@@ -122,6 +123,7 @@ if __name__ == '__main__':
             RMB = pre_RMB
             RMB2 = pre_RMB2
             if not DataManager().udp_sending:
+                print(00000)
                 if imu_switch:
                     imu_switch = False
                     pre_q, pre_a, pre_q2 = imu_set.get_ipop()
@@ -145,7 +147,7 @@ if __name__ == '__main__':
                         "name": reset,
                         # "position": [-x_p / 0.0254 / 3.0, y_p / 0.0254 / 3.0, -z_p / 0.0254 / 3.0],
                         # "position": DataManager().premodel_root_p[i],
-                        "position": DataManager().pre_position,
+                        "position": [0.0, 0.0, 0.0],
                         "rotation": [rot[0], rot[1], rot[2], rot[3]],
                         "acc": [0.0, 0.0, 0.0],
                         "lp": [0.0, 0.0, 0.0],
@@ -162,10 +164,11 @@ if __name__ == '__main__':
                 DataManager().udp_sending = True
 
             elif DataManager().udp_switch:
+                print(2222)
                 reset = 'end'
                 aM = a.mm(RMI2.t())
 
-                pose, tran, cj, grf, contact_check = net.forward_frame(a.view(1, 6, 3).float(), q.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
+                pose, tran, l_foot_p, r_foot_p, contact_check = net.forward_frame(a.view(1, 6, 3).float(), q.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=False)
 
                 pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
 
@@ -189,11 +192,10 @@ if __name__ == '__main__':
                         "rotation": rotation,
                         # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
                         "acc": [0.0, 0.0, 0.0],
-                        "lp": [0.0, 0.0, 0.0],
-                        "rp": [0.0, 0.0, 0.0],
+                        "lp": l_foot_p,
+                        "rp": r_foot_p,
                     }
                     send_data.append(frame_bone_data)
-
 
                 data = json.dumps(send_data).encode("utf-8")
                 TARGET_IP =  DataManager().set_ip

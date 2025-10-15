@@ -107,6 +107,7 @@ def run_pipeline(net, data_dir, sequence_ids=None):
     accs, rots, poses, _ = torch.load(os.path.join(data_dir, 'test.pt')).values()
     init_poses = [art.math.axis_angle_to_rotation_matrix(_[0]) for _ in poses]
 
+
     data_name = os.path.basename(data_dir)
     output_dir = os.path.join(paths.result_dir, data_name, net.name)
     os.makedirs(output_dir, exist_ok=True)

@@ -22,7 +22,7 @@ class PreModelServer(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('', UDP_PORT))
 
-        # print(f"Listening on {UDP_IP}:{UDP_PORT}...")
+        print(f"Listening on :{UDP_PORT}...")
 
         while True:
             data, addr = sock.recvfrom(9999999)  # 버퍼 크기 설정

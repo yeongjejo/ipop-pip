@@ -60,7 +60,7 @@ class PhysicsOptimizer:
         self.vy_ay_up_th = 6.0
         self.dz_th = -0.7
         self.hys_time = 0.8
-        self.hys_short_time = 0.48
+        self.hys_short_time = 0.048
 
         self.init = 0
 
@@ -270,7 +270,7 @@ class PhysicsOptimizer:
         r_foot_p = self.root_zero_model.calc_body_position(q, vars(Body)['RFOOT'])
         root_position = torch.tensor(root_position)
 
-        print(root_position)
+        # print(root_position)
         q = smpl_to_rbdl(pose, root_position)[0]
         qdot = (q - self.q) / self.params['delta_t']
 
@@ -375,7 +375,7 @@ class PhysicsOptimizer:
 
         #2. root_pred 계산 - 중력적용 해야함
         root_now = pre_q[0:3]
-        root_pred = root_now + pre_qdot[0:3] * dt
+        root_pred = root_now + (pre_qdot[0:3]) * dt
 
         #root_pred가 날라가는것 방지
         # dx = root_pred - root_now
@@ -387,8 +387,7 @@ class PhysicsOptimizer:
         self.qdot[0:3] = (self.q[0:3] - pre_q[0:3]) / dt
 
         #3. 양발 stance 결정하기
-        self.visual_model.update_kinematics(self.q, self.qdot,
-                                                np.zeros(self.root_zero_model.qdot_size))
+        self.visual_model.update_kinematics(self.q, self.qdot, np.zeros(self.root_zero_model.qdot_size))
         l_foot_p = self.visual_model.calc_body_position(self.q, vars(Body)['LFOOT'])
         r_foot_p = self.visual_model.calc_body_position(self.q, vars(Body)['RFOOT'])
 
@@ -417,7 +416,7 @@ class PhysicsOptimizer:
             swing_cand_r = True
             swing_cand_l = True
 
-        #발끝속도
+        # 발끝속도
         sL = np.linalg.norm(vl_foot)
         sR = np.linalg.norm(vr_foot)
         if sL > self.vfoot_th_high :
@@ -450,7 +449,11 @@ class PhysicsOptimizer:
         else :
             cand_state_R = prev_state_r
 
-        #시간 유지 3frame, state 최종 결정
+        # print(stance_cand_l, not swing_cand_l, cand_state_L)
+        # print(stance_cand_r, not swing_cand_r, cand_state_R)
+        # print('-'*30)
+
+        #시간 유지 3frame, state 최종 결정v;
         timer_l = self.hys_short_l
         timer_r = self.hys_short_r
 
@@ -474,7 +477,8 @@ class PhysicsOptimizer:
         self.hys_short_l = timer_l
         self.hys_short_r = timer_r
 
-        print(self.state_l,self.state_r,sep=',')
+
+        # print(self.state_l,self.state_r,sep=',')
 
         #발 고정 위치 결정 (anchor)
         if self.state_l == 'STANCE':
@@ -493,6 +497,8 @@ class PhysicsOptimizer:
         else :
             self.anchor_R = None
 
+
+        print(self.anchor_R, self.anchor_L)
         #root 위치 계산
         stance_feet = []
         J_list,err_list = [],[]
@@ -501,6 +507,7 @@ class PhysicsOptimizer:
             joint_id = vars(Body)["LFOOT"]
             J = self.visual_model.calc_point_Jacobian(self.q, joint_id, np.zeros(3))
             J_list.append(J[:,0:3])
+            # err_list.append(np.zeros(3))
             err_list.append(self.anchor_L - l_foot_p)
             stance_feet.append("L")
 
@@ -508,6 +515,7 @@ class PhysicsOptimizer:
             joint_id = vars(Body)["RFOOT"]
             J = self.visual_model.calc_point_Jacobian(self.q, joint_id, np.zeros(3))
             J_list.append(J[:,0:3])
+            # err_list.append(np.zeros(3))
             err_list.append(self.anchor_R - r_foot_p)
             stance_feet.append("R")
 
@@ -520,10 +528,30 @@ class PhysicsOptimizer:
             # root_refined = root_pred + v_root_refined * dt
         #발끝 포인트 기준 허리 위치 계산
         else :
-            Jc = np.vstack(J_list)
-            err = np.concatenate(err_list)
+            j_size = 0
+            if len(J_list) == 2:
+                # print(J_list[0])
+                # print( J_list[1])
+                # print('--------')
+                anchor_mid = 0.5 * (self.anchor_L + self.anchor_R)
+                p_mid = 0.5 * (l_foot_p + r_foot_p)
+                J_mid = (np.array(J_list[0]) + np.array(J_list[1])) / 2
+                Jc = J_mid
+                err = anchor_mid - p_mid
+                j_size = 1
+            else:
+                Jc = np.vstack(J_list)
+                err = np.concatenate(err_list)
+                j_size = 1
 
-            W = np.diag([0.5, 1.5, 0.5] * len(J_list))
+            #
+            # print(Jc)
+            # print(err)
+            # print(j_size)
+            # print(len(J_list))
+            # print('------')
+            W = np.diag([0.5, 1.5, 0.5] * j_size)
+            # W = np.diag([0.5, 1.5, 0.5] * len(J_list))
             Jw = W @ Jc
             rw = W @ err
 
@@ -535,9 +563,16 @@ class PhysicsOptimizer:
             if d_norm > 0.01 :
                 d_root *= 0.01/d_norm
 
-            #root얻데이트
-            root_refined = pre_q[0:3] + d_root
-            v_root_refined = (root_refined - pre_q[0:3]) / dt
+            # #root얻데이트
+            # root_refined = pre_q[0:3] + d_root
+            # v_root_refined = (root_refined - pre_q[0:3]) / dt
+
+            # root얻데이트
+            # root_refined = pre_q[0:3] + d_root
+            root_refined = self.q[0:3] + d_root
+            # v_root_refined = (root_refined - pre_q[0:3]) / dt
+            v_root_refiened = (root_refined - self.q[0:3]) / dt
+
 
         self.q[0:3] = root_refined
         self.qdot = (self.q - pre_q)/dt

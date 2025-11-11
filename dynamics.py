@@ -347,11 +347,13 @@ class PhysicsOptimizer:
 
 
                 else:
-                    if joint_name == 'LFOOT' and stable > 0.85:
+                    # contact_th = 0.75
+                    contact_th = 0.9
+                    if joint_name == 'LFOOT' and stable > contact_th:
                         contact_check = 1
-                    elif joint_name == 'RFOOT' and contact_check == 0 and stable > 0.85:
+                    elif joint_name == 'RFOOT' and contact_check == 0 and stable > contact_th:
                         contact_check = 2
-                    elif joint_name == 'RFOOT' and contact_check == 1 and stable > 0.85:
+                    elif joint_name == 'RFOOT' and contact_check == 1 and stable > contact_th:
                         contact_check = 3
 
                     # th = -np.log(min(stable, 0.84999) / 0.85)

@@ -36,7 +36,7 @@ class RNN(torch.nn.Module):
         self.linear1 = torch.nn.Linear(input_size, hidden_size)
         self.linear2 = torch.nn.Linear(hidden_size * (2 if bidirectional else 1), output_size)
         self.dropout = torch.nn.Dropout(dropout) if dropout > 0 else torch.nn.Identity()
-
+        #
         if load_weight_file and os.path.exists(load_weight_file):
             self.load_state_dict(torch.load(load_weight_file))
             self.eval()
@@ -54,6 +54,10 @@ class RNN(torch.nn.Module):
         x = self.rnn(pack_padded_sequence(x, length, enforce_sorted=False), init)[0]
         x = self.linear2(pad_packed_sequence(x)[0])
         return [x[:l, i].clone() for i, l in enumerate(length)]
+
+    def load_w(self):
+        self.load_state_dict(torch.load('data/contact_weights_0.4883.pt'))
+
 
 
 class RNNWithInit(RNN):

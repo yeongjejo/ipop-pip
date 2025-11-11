@@ -1,6 +1,6 @@
 import torch
 from pygame.time import Clock
-from ipop_net import PIP
+from net import PIP
 import articulate as art
 from data_manager import DataManager
 import time
@@ -11,6 +11,8 @@ from protocol.axio_server import AxioServer
 from totalcapture.premodel_server import PreModelServer
 from totalcapture.senpreprocessed import TotalcaptureIMUData, TotalcaptureViconData
 
+from velocitymodel.utils import TotalCaptureDataset
+from velocitymodel.module.module import *
 
 
 class IMUSet:
@@ -84,10 +86,16 @@ if __name__ == '__main__':
     PreModelServer().start()
     AxioServer().start()
 
+    # # TotalcaptureIMUData().setTotalcaptureIMUData()
+    # # print(222)
+    # TotalcaptureViconData().setTotalcaptureViconData()
+    # print(1111)
+    #
+    # clock = Clock()
+    #
     while True:
         if DataManager().axioStart is not True:
             continue
-
         imu_set = IMUSet()
         net = PIP()
         net2 = PIP()
@@ -99,29 +107,16 @@ if __name__ == '__main__':
         pre_a = None
         pre_RMB = None
         pre_RMB2 = None
-        reset = 'start'
-
 
         # while i < len(DataManager.totalcapture_imu_acc):
         while True:
-            print(1111)
-            time.sleep(DataManager().time_setting)
-            if DataManager().tpose_check:
-                time.sleep(2)
-                DataManager().axioStart = False
-                imu_switch = True
-                DataManager().udp_switch = False
-                DataManager().udp_sending = False
-                DataManager().pre_position = [0.0, 0.0, 0.0]
-                print('reset')
-                break
 
             q = pre_q
             a = pre_a
             RMB = pre_RMB
             RMB2 = pre_RMB2
-            if not DataManager().udp_sending:
-                print(00000)
+
+            if not DataManager().udp_switch and not DataManager().udp_sending:
                 if imu_switch:
                     imu_switch = False
                     pre_q, pre_a, pre_q2 = imu_set.get_ipop()
@@ -132,46 +127,54 @@ if __name__ == '__main__':
                     RMB = pre_RMB
                     RMB2 = pre_RMB2
 
+                # clock.tick(60)
+                # print(art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)))
 
                 # 프리 모델이 적용할 데이터 전송
                 send_data = []
-                for rot in art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)):
-                    rot = rot.tolist()
+
+
+                for test in art.math.axis_angle_to_quaternion(art.math.rotation_matrix_to_axis_angle(RMB2)):
+                    test = test.tolist()
                     # print(DataManager().premodel_root_p[i])
                     # print(DataManager().pre_position)
                     # print('-'*30)
                     frame_bone_data = {
                         "time": "5",
-                        "name": reset,
+                        "name": "test",
                         # "position": [-x_p / 0.0254 / 3.0, y_p / 0.0254 / 3.0, -z_p / 0.0254 / 3.0],
-                        # "position": DataManager().premodel_root_p[i],
-                        "position": [0.0, 0.0, 0.0],
-                        "rotation": [rot[0], rot[1], rot[2], rot[3]],
-                        "acc": [0.0, 0.0, 0.0],
-                        "lp": [0.0, 0.0, 0.0],
-                        "rp": [0.0, 0.0, 0.0],
+                        "position": DataManager().premodel_root_p[i],
+                        # "position": DataManager().pre_position,
+                        "rotation": [test[0], test[1], test[2], test[3]],
+                        "acc": [0.0, 0.0, 0.0]
                     }
                     send_data.append(frame_bone_data)
 
                 data = json.dumps(send_data).encode("utf-8")
 
-                TARGET_IP =  DataManager().set_ip
+                TARGET_IP = "192.168.201.199"
                 TARGET_PORT = 5005
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(data, (TARGET_IP, TARGET_PORT))
                 DataManager().udp_sending = True
 
             elif DataManager().udp_switch:
-                print(2222)
-                reset = 'end'
                 aM = a.mm(RMI2.t())
+                # print(a)
+                # print(aM)
+                # aM = a
 
-                pose, tran, l_foot_p, r_foot_p, contact_check = net.forward_frame(a.view(1, 6, 3).float(), q.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=False)
+                pose, tran, cj, grf, contact_check = net.forward_frame(a.view(1, 6, 3).float(), q.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=False)
+                # pose2, tran2, cj2, grf2 = net2.forward_frame(aM.view(1, 6, 3).float(), RMB.view(1, 6, 3, 3).float(), return_grf=True, check_rbdl=True)
 
+
+
+                # pose2 = art.math.rotation_matrix_to_axis_angle(pose2).view(-1, 72)
                 pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
 
 
                 q = art.math.axis_angle_to_quaternion(pose)
+                # q2 = art.math.axis_angle_to_quaternion(pose2)
                 bone_seq = [0, 3, 6, 9, 12, 15, 13, 16, 18, 20, 14, 17, 19, 21, 1, 4, 7, 2, 5, 8]
 
                 send_data = []
@@ -181,7 +184,8 @@ if __name__ == '__main__':
                     p2 = [0.0, 0.0, 0.0]
                     if index == 0:
                         p = tran.view(-1, 3).tolist()[0]
-
+                        # p2 = tran2.view(-1, 3).tolist()[0]
+                #
                     rotation = q[index].tolist()
                     frame_bone_data = {
                         "time": contact_check,
@@ -189,21 +193,64 @@ if __name__ == '__main__':
                         "position": p,
                         "rotation": rotation,
                         # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
-                        "acc": [0.0, 0.0, 0.0],
-                        "lp": l_foot_p,
-                        "rp": r_foot_p,
+                        "acc": [0.0, 0.0, 0.0]
                     }
                     send_data.append(frame_bone_data)
 
+                    # frame_bone_data2 = {
+                    #     "time": "1",
+                    #     "name": "test",
+                    #     "position": p2,
+                    #     "rotation": q2[index].tolist(),
+                    #     # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
+                    #     "acc": [0.0, 0.0, 0.0]
+                    # }
+                    # send_data2.append(frame_bone_data2)
+
+                # print(send_data)\\
                 data = json.dumps(send_data).encode("utf-8")
-                TARGET_IP =  DataManager().set_ip
+                # data2 = json.dumps(send_data2).encode("utf-8")
+                # # data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
+                # # print(data)
+                #
+                TARGET_IP = "192.168.201.199"
+                # TARGET_PORT = 5005
+                # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                # sock.sendto(data, (TARGET_IP, TARGET_PORT))
+                # #
                 TARGET_PORT = 5007
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(data, (TARGET_IP, TARGET_PORT))
 
+                # TARGET_PORT = 5008
+                # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                # sock.sendto(data2, (TARGET_IP, TARGET_PORT))
+
+                # # #
+                # TARGET_PORT = 5006
+                # data = json.dumps(DataManager().totalcapture_gt[i]).encode("utf-8")
+                # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                # sock.sendto(data, (TARGET_IP, TARGET_PORT))
 
                 DataManager().udp_switch = False
                 DataManager().udp_sending = False
 
                 imu_switch = True
                 i += 1
+
+
+            # 유니티 전송용
+            # tran = tran.view(-1, 3)
+            #
+            # # send motion to Unity
+            # s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
+            #     ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
+            #     ','.join(['%d' % v for v in cj]) + '#' + \
+            #     (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
+            # # print(','.join(['%g' % v for v in test_hand_q]) + '#')
+            #
+            # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # server_address = ('192.168.201.199', 8888)
+            # # server_address = ('127.0.0.1', 8888)
+            # sock.sendto(s.encode('utf-8'), server_address)
+            #

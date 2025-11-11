@@ -11,6 +11,8 @@ from protocol.axio_server import AxioServer
 from totalcapture.premodel_server import PreModelServer
 from totalcapture.senpreprocessed import TotalcaptureIMUData, TotalcaptureViconData
 
+from velocitymodel.utils import TotalCaptureDataset
+from velocitymodel.module.module import *
 
 
 class IMUSet:
@@ -28,27 +30,7 @@ class IMUSet:
         a = DataManager().ipop_imu_acc
 
         a = torch.tensor(a)
-        #
-        # if self.n_imus == 0:
-        #     print("0번 : ", torch.tensor(a))
 
-
-        #
-        # a = -torch.tensor(a) * 9.8 / 10.0                       # acceleration is reversed
-        # # a = r.bmm(a.unsqueeze(-1)).squeeze(-1) + torch.tensor([0., 0., 9.8])
-        # a = r.bmm(a.unsqueeze(-1)).squeeze(-1)
-        # if self.n_imus == 0:
-        #     print("1번 : ", a)
-        # a[0] += torch.tensor([0., 0., 9.8])
-        # a[1] += torch.tensor([0., 0., 9.8])
-        # a[2] += torch.tensor([9.8, 0., 0.])
-        # a[3] += torch.tensor([9.8, 0., 0.])
-        # a[4] += torch.tensor([0., -9.8, 0.])
-        # a[5] += torch.tensor([9.8, 0., 0.])
-        # if self.n_imus == 0:
-        #     print("2번 : ",a)
-        # self.n_imus += 1
-        # print(a[5])
 
         return r, a, premodel_r
 
@@ -81,7 +63,7 @@ def tpose_calibration_ipop_2024(imu_set):
 
 
 if __name__ == '__main__':
-    PreModelServer().start()
+    # PreModelServer().start()
     AxioServer().start()
 
     while True:

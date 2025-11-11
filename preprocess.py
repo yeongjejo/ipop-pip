@@ -12,10 +12,8 @@ import torch
 import os
 import pickle
 from config import paths, amass_data
-import numpy as np
-import glob
 
-from log_test import rotation_matrix_to_quaternion
+
 from sensor.sensor_part import SensorPart
 
 def process_dipimu():
@@ -70,18 +68,18 @@ def process_dipimu():
                         
                         title_str += "\n"
                         # print(title_str)
-                        for item1, item2 in zip(ori, acc):
-                            q = rotation_matrix_to_quaternion(item1).tolist()
-                            acc = item2.tolist()
-                            
-                            q_str = str(q).replace('[', '').replace(']', '')
-                            acc_str = str(acc).replace('[', '').replace(']', '')
-                            
-                            # print('----')
-                            title_str += (q_str + ", " + acc_str + ", " )
-                            title_str += "\n"
-                            # print(q, acc)
-                            
+                        # for item1, item2 in zip(ori, acc):
+                        #     q = rotation_matrix_to_quaternion(item1).tolist()
+                        #     acc = item2.tolist()
+                        #
+                        #     q_str = str(q).replace('[', '').replace(']', '')
+                        #     acc_str = str(acc).replace('[', '').replace(']', '')
+                        #
+                        #     # print('----')
+                        #     title_str += (q_str + ", " + acc_str + ", " )
+                        #     title_str += "\n"
+                        #     # print(q, acc)
+                        #
                         # 문자열을 리스트로 변환 (쉼표로 구분된 데이터)
                         lines = title_str.split('\n')
 

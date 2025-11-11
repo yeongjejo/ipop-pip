@@ -16,7 +16,9 @@ class DataManager():
     totalcapture_data_list = ['acting3', 'freestyle1', 'freestyle3', 'rom3', 'walking2']
     selected_totalcapture_data = 0 # 0~4 까지 원하는 케이스 선택
 
-    set_ip = "192.168.201.10"
+    # set_ip = "192.168.201.199"
+    # set_ip = "192.168.0.15"
+    set_ip = "127.0.0.1"
     
     time_setting = 0.005 # 플레이 시간
     
@@ -31,6 +33,7 @@ class DataManager():
     ipop_imu_r = []
 
     premodel_imu_r = []
+    premodel_imu_acc = []
     premodel_root_p = []
 
     premodel_output_vel = []
@@ -104,16 +107,22 @@ class DataManager():
         part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
                          SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST]
 
-        premodel_part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
-                         SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM,
-                        SensorPart.LEFT_UPPER_LEG, SensorPart.RIGHT_UPPER_LEG]
+        # premodel_part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
+        #                  SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST, SensorPart.LEFT_UPPER_ARM, SensorPart.RIGHT_UPPER_ARM,
+        #                 SensorPart.LEFT_UPPER_LEG, SensorPart.RIGHT_UPPER_LEG]
+
+        premodel_part_sequence = [SensorPart.LEFT_UPPER_ARM,SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_UPPER_ARM, SensorPart.RIGHT_LOWER_ARM,
+                                  SensorPart.LEFT_UPPER_LEG, SensorPart.LEFT_LOWER_LEG, SensorPart.RIGHT_UPPER_LEG, SensorPart.RIGHT_LOWER_LEG,
+                                SensorPart.WAIST, SensorPart.BACK,]
 
         frame_acc_sensor_data = []
         frame_ori_sensor_data = []
         frame_premodel_sensor_data = []
+        frame_premodel_sensor_acc = []
         for part in premodel_part_sequence:
             try:
                 frame_premodel_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
+                frame_premodel_sensor_acc.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
                 if part in part_sequence:
                     frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
                     frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
@@ -123,7 +132,7 @@ class DataManager():
                 print(self.__sensor_data[part][3])
                 return
 
-
         self.ipop_imu_acc = frame_acc_sensor_data
         self.ipop_imu_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
         self.premodel_imu_r = torch.squeeze(torch.stack(frame_premodel_sensor_data))
+        self.premodel_imu_acc = frame_premodel_sensor_acc

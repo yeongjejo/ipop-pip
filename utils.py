@@ -73,6 +73,14 @@ def normalize_and_concat(glb_acc, glb_rot):
     data = torch.cat((acc.flatten(1), ori.flatten(1)), dim=1)
     return data
 
+def ten_normalize_and_concat(glb_acc, glb_rot):
+    glb_acc = glb_acc.view(-1, 10, 3)
+    glb_rot = glb_rot.view(-1, 10, 3, 3)
+    acc = torch.cat((glb_acc[:, :5] - glb_acc[:, 5:], glb_acc[:, 5:]), dim=1).bmm(glb_rot[:, -1])
+    ori = torch.cat((glb_rot[:, 5:].transpose(2, 3).matmul(glb_rot[:, :5]), glb_rot[:, 5:]), dim=1)
+    data = torch.cat((acc.flatten(1), ori.flatten(1)), dim=1)
+    return data
+
 
 def print_title(s):
     print('============ %s ============' % s)

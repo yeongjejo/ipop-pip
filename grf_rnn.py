@@ -59,8 +59,6 @@ class GRFRNN(torch.nn.Module):
 
         batch = [(x_seq, init_pose)]
 
-        print(batch.shape)
-
 
         contact = [c[0] for c in self.forward(batch)]
         return contact

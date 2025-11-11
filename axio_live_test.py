@@ -24,13 +24,15 @@ class IMUSet:
     def get_ipop(self):
 
         r = DataManager().ipop_imu_r
-        premodel_r = DataManager().premodel_imu_r
-        a = DataManager().premodel_imu_acc
+        ten_r = DataManager().premodel_imu_r
+        ten_a = DataManager().premodel_imu_acc
+        a = DataManager().ipop_imu_acc
 
+        ten_a = torch.tensor(ten_a)
         a = torch.tensor(a)
 
 
-        return r, a, premodel_r
+        return r, ten_a, ten_r, a
 
 
 
@@ -47,7 +49,7 @@ def tpose_calibration_ipop_2024(imu_set):
     # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
     # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)
     # RMI2 = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, 1.]]).mm(RSI)
-    RIS, _, RIS2 = imu_set.get_ipop()
+    RIS, _, RIS2, _ = imu_set.get_ipop()
 
 
     RSB = RMI.matmul(RIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
@@ -55,10 +57,6 @@ def tpose_calibration_ipop_2024(imu_set):
     # RSB_hand = RMI.matmul(handRIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
 
     return RMI, RSB, RMI2, RSB2
-
-
-
-
 
 
 
@@ -82,17 +80,20 @@ if __name__ == '__main__':
             print(1)
             clock.tick(60)
 
-            pre_q, pre_a, pre_q2 = imu_set.get_ipop()
+            pre_q, pre_a, pre_q2, pre_a2 = imu_set.get_ipop()
 
             pre_RMB = RMI.matmul(pre_q).matmul(RSB)
             pre_RMB2 = RMI.matmul(pre_q2).matmul(RSB2)
             a = pre_a
-            RMB2 = pre_RMB2
+            a2 = pre_a2
+
 
             aM = a.mm(RMI2.t())
+            aM2 = a2.mm(RMI.t())
 
 
-            _, tran, cj, grf, contact_check = net.forward_frame(pre_RMB2, aM)
+            _, tran, cj, grf, contact_check = net.forward_frame(pre_RMB2, aM, pre_RMB, aM2)
+
 
 
             pose = torch.zeros(24, 3)
@@ -160,6 +161,8 @@ if __name__ == '__main__':
             # sock.sendto(data2, (TARGET_IP, TARGET_PORT))
 
             TARGET_PORT = 5007
+
+            print(111)
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(data, (TARGET_IP, TARGET_PORT))
 

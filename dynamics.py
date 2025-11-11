@@ -4,10 +4,10 @@ import pybullet as p
 
 import articulate as art
 from articulate.utils.bullet import *
-# from articulate.utils.rbdl import *
+from articulate.utils.rbdl import *
 from data_manager import DataManager
 from utils import *
-# from qpsolvers import solve_qp
+from qpsolvers import solve_qp
 from config import paths
 import pandas as pd
 
@@ -25,8 +25,8 @@ class PhysicsOptimizer:
         supp_poly_size = 0.2
         self.tetee = []
         self.debug = debug
-        # self.model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
-        # self.zero_model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
+        self.model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
+        self.zero_model = RBDLModel(paths.physics_model_file, update_kinematics_by_hand=True)
         self.params = read_debug_param_values_from_json(paths.physics_parameter_file)
         self.friction_constraint_matrix = np.array([[np.sqrt(2), -mu, 0],
                                                     [-np.sqrt(2), -mu, 0],
@@ -347,8 +347,8 @@ class PhysicsOptimizer:
 
 
                 else:
-                    # contact_th = 0.75
-                    contact_th = 0.9
+                    contact_th = 0.75
+                    # contact_th = 0.9
                     if joint_name == 'LFOOT' and stable > contact_th:
                         contact_check = 1
                     elif joint_name == 'RFOOT' and contact_check == 0 and stable > contact_th:

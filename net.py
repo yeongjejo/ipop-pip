@@ -5,6 +5,8 @@ from config import *
 from grf_rnn import GRFRNN
 from utils import *
 import torch
+from dynamics import PhysicsOptimizer
+from torch.nn.functional import relu
 
 
 class PIP(torch.nn.Module):
@@ -13,6 +15,41 @@ class PIP(torch.nn.Module):
 
     def __init__(self):
         super(PIP, self).__init__()
+
+        self.rnn1 = RNNWithInit(input_size=72,
+                                output_size=joint_set.n_leaf * 3,
+                                hidden_size=self.n_hidden,
+                                num_rnn_layer=2,
+                                dropout=0.4)
+        self.rnn2 = RNN(input_size=72 + joint_set.n_leaf * 3,
+                        output_size=joint_set.n_full * 3,
+                        hidden_size=self.n_hidden,
+                        num_rnn_layer=2,
+                        dropout=0.4)
+        self.rnn3 = RNN(input_size=72 + joint_set.n_full * 3,
+                        output_size=joint_set.n_reduced * 6,
+                        hidden_size=self.n_hidden,
+                        num_rnn_layer=2,
+                        dropout=0.4)
+        self.rnn4 = RNNWithInit(input_size=72 + joint_set.n_full * 3,
+                                output_size=24 * 3,
+                                hidden_size=self.n_hidden,
+                                num_rnn_layer=2,
+                                dropout=0.4)
+        self.rnn5 = RNN(input_size=72 + joint_set.n_full * 3,
+                        output_size=2,
+                        hidden_size=64,
+                        num_rnn_layer=2,
+                        dropout=0.4)
+
+        body_model = art.ParametricModel(paths.smpl_file)
+        self.inverse_kinematics_R = body_model.inverse_kinematics_R
+        self.forward_kinematics = body_model.forward_kinematics
+        self.dynamics_optimizer = PhysicsOptimizer(debug=False)
+        self.rnn_states = [None for _ in range(5)]
+
+        self.load_state_dict(torch.load(paths.weights_file))
+        self.eval()
 
 
         self.pose_model = art.ParametricModel(paths.smpl_file)
@@ -75,7 +112,7 @@ class PIP(torch.nn.Module):
 
     @torch.no_grad()
     # def forward_frame(self, glb_acc, glb_rot, test_joint, ten_pose, ten_rot, ten_acc, check_rbdl, return_grf=False):
-    def forward_frame(self, ten_rot, ten_acc):
+    def forward_frame(self, ten_rot, ten_acc, glb_rot, glb_acc):
         r"""
         Forward. Currently only support 1 subject.
 
@@ -85,64 +122,38 @@ class PIP(torch.nn.Module):
         :return: If return_grf is False, return (pose, translation).
                  If return_grf is True, return (pose, translation, collision_joints, contact_forces).
         """
-        # imu = normalize_and_concat(glb_acc, glb_rot)
-        #
-        # x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
-        # x = self.rnn1.linear2(x[0])
-        # x = torch.cat([x, imu], dim=1)
-        #
-        # x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
-        # x = self.rnn2.linear2(x[0])
+        imu = normalize_and_concat(glb_acc, glb_rot)
 
-        #
-        # betas = torch.randn([1, self.smpl_model.num_betas], dtype=torch.float32)
-        # expression = torch.randn([1, self.smpl_model.num_expression_coeffs], dtype=torch.float32)
-        #
-        # smpl_body_axis, test_pose = self.smpl_model(betas=betas, expression=expression, body_pose=glb_axis, return_verts=True)
-        #
-        # test_pose = test_pose.flatten()
-        # test_pose = test_pose.unsqueeze(0)
-        # test_pose = test_pose[0][:-3]
-        # test_pose = test_pose.reshape(1, -1)
-        #
-        # # # 1차 수정
-        # test_pose = test_pose[:, 3:]
-        # # last_value = x[0, -3].view(1, 1)
-        # last_value = torch.tensor([[0.0]])
-        # test_pose = torch.cat((test_pose, last_value), dim=1)
-        # # last_value = x[0, -2].view(1, 1)
-        # test_pose = torch.cat((test_pose, last_value), dim=1)
-        # # last_value = x[0, -1].view(1, 1)
-        # test_pose = torch.cat((test_pose, last_value), dim=1)\][
+        x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
+        x = self.rnn1.linear2(x[0])
+        x = torch.cat([x, imu], dim=1)
 
-        # print(x[0][:3])
-        # print(test_joint.view(1, -1)[:, 3:])
+        x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
+        x = self.rnn2.linear2(x[0])
+
+        x = torch.cat([x, imu], dim=1)
+        # x = torch.cat([test_pose, imu], dim=1)
         # print(x)
-        # x = torch.cat([test_joint.view(1, -1)[:, 3:], imu], dim=1)
-        # x33 = x.clone()
-        # x = torch.cat([x, imu], dim=1)
-        # # x = torch.cat([test_pose, imu], dim=1)
-        # # print(x)
-        # x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0),
-        #                                        self.rnn_states[2])
-        # global_6d_pose = self.rnn3.linear2(x1[0])
+        x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0),
+                                               self.rnn_states[2])
+        global_6d_pose = self.rnn3.linear2(x1[0])
+
+
+        x1, self.rnn_states[3] = self.rnn4.rnn(relu(self.rnn4.linear1(x), inplace=True).unsqueeze(0),
+                                               self.rnn_states[3])
+        joint_velocity = self.rnn4.linear2(x1[0])
+
+        x1, self.rnn_states[4] = self.rnn5.rnn(relu(self.rnn5.linear1(x), inplace=True).unsqueeze(0),
+                                               self.rnn_states[4])
+
+        # print(x1.shape)
+        contact = self.rnn5.linear2(x1[0])
         #
-        #
-        # x1, self.rnn_states[3] = self.rnn4.rnn(relu(self.rnn4.linear1(x), inplace=True).unsqueeze(0),
-        #                                        self.rnn_states[3])
-        # joint_velocity = self.rnn4.linear2(x1[0])
-        #
-        # x1, self.rnn_states[4] = self.rnn5.rnn(relu(self.rnn5.linear1(x), inplace=True).unsqueeze(0),
-        #                                        self.rnn_states[4])
-        #
-        # # print(x1.shape)
-        # contact = self.rnn5.linear2(x1[0])
-        # #
-        # pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
-        # joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
-        #
-        # # pose = art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().premodel_output_q)* 1.0)
-        # # joint_velocity = torch.tensor(DataManager().premodel_output_vel)
+        pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
+        joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
+
+        # pose = art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().premodel_output_q)* 1.0)
+        # joint_velocity = torch.tensor(DataManager().premodel_output_vel)
 
 
         local_tran = None
@@ -166,20 +177,23 @@ class PIP(torch.nn.Module):
 
         new_contect = self.new_contect_model.predict(ten_acc, ten_rot, jo.squeeze(0))
 
-        contact_check = 0
-        for joint_name, stable in zip(['LFOOT', 'RFOOT'], new_contect[0].cpu().sigmoid().numpy()):
-            # contact_th = 0.75
-            contact_th = 0.9
-            if joint_name == 'LFOOT' and stable > contact_th:
-                contact_check = 1
-            elif joint_name == 'RFOOT' and contact_check == 0 and stable > contact_th:
-                contact_check = 2
-            elif joint_name == 'RFOOT' and contact_check == 1 and stable > contact_th:
-                contact_check = 3
 
-        return None, None, None, None, contact_check
+
+        #
+        # contact_check = 0
+        # for joint_name, stable in zip(['LFOOT', 'RFOOT'], new_contect[0].cpu().sigmoid().numpy()):
+        #     # contact_th = 0.75
+        #     contact_th = 0.9
+        #     if joint_name == 'LFOOT' and stable > contact_th:
+        #         contact_check = 1
+        #     elif joint_name == 'RFOOT' and contact_check == 0 and stable > contact_th:
+        #         contact_check = 2
+        #     elif joint_name == 'RFOOT' and contact_check == 1 and stable > contact_th:
+        #         contact_check = 3
+
+        # return None, None, None, None, contact_check
         #
         # # # TODO: multiple people
-        # return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], new_contect[0].cpu(), glb_acc.cpu(), check_rbdl,
-        #                                               return_grf=return_grf)
+        return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], new_contect[0].cpu(), glb_acc.cpu(), False,
+                                                      return_grf=True)
 

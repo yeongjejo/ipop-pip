@@ -70,10 +70,10 @@ class AxioServer(threading.Thread):
                     a = Acc(acc[0], acc[1], acc[2])
                     m = Mag(0.0, 0.0, 0.0)
                     g = Gyro(0.0, 0.0, 0.0)
-                    print(name)
+                    # print(name)
 
                     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
-                print('-'*30)
+                # print('-'*30)
 
                 DataManager().setIpopIMUData()
                 DataManager().axioStart = True

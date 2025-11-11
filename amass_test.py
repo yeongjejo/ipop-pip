@@ -63,8 +63,10 @@ if __name__ == '__main__':
             #
             # aM = a.mm(RMI2.t())
 
-            _, tran, cj, grf, contact_check = net.forward_frame(acc.view(1, 6, 3).float(), rot.view(1, 6, 3, 3).float(), joint.view(1, 24, 3), ten_pose, ten_rot, ten_acc,  return_grf=True, check_rbdl=False)
+            # _, tran, cj, grf, contact_check = net.forward_frame(acc.view(1, 6, 3).float(), rot.view(1, 6, 3, 3).float(), joint.view(1, 24, 3), ten_pose, ten_rot, ten_acc,  return_grf=True, check_rbdl=False)
+            _, tran, cj, grf = net.forward_frame(acc.view(1, 6, 3).float(), rot.view(1, 6, 3, 3).float(), joint.view(1, 24, 3), ten_pose, ten_rot, ten_acc,  return_grf=True, check_rbdl=False)
 
+            contact_check = 0
             # torch.Size([24, 3])
             # print('shpae', pose.shape)
 
@@ -88,8 +90,8 @@ if __name__ == '__main__':
                 p = [0.0, 0.0, 0.0]
                 p2 = [0.0, 0.0, 0.0]
                 if index == 0:
-                    p = [0.0, 0.0, 0.0]
-                    # p = tran.view(-1, 3).tolist()[0]
+                    # p = [0.0, 0.0, 0.0]
+                    p = tran.view(-1, 3).tolist()[0]
                     # p2 = tran2.view(-1, 3).tolist()[0]
 
                 # print("확인용", joint[index].tolist())

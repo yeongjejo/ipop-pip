@@ -132,6 +132,9 @@ class DataManager():
                 print(self.__sensor_data[part][3])
                 return
 
+        empty_list =  [frame_acc_sensor_data[4][0], frame_acc_sensor_data[4][1], frame_acc_sensor_data[4][2]]
+        frame_acc_sensor_data[4] = [frame_acc_sensor_data[5][0], frame_acc_sensor_data[5][1], frame_acc_sensor_data[5][2]]
+        frame_acc_sensor_data[5] = empty_list
         self.ipop_imu_acc = frame_acc_sensor_data
         self.ipop_imu_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
         self.premodel_imu_r = torch.squeeze(torch.stack(frame_premodel_sensor_data))

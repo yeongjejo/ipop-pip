@@ -70,8 +70,10 @@ class AxioServer(threading.Thread):
                     a = Acc(acc[0], acc[1], acc[2])
                     m = Mag(0.0, 0.0, 0.0)
                     g = Gyro(0.0, 0.0, 0.0)
-                    # print(name)
+                    # print(name, q)
 
+                    # if SensorPart.WAIST == sensor_part:
+                    #     print(q)
                     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
                 # print('-'*30)
 

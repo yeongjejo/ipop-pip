@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
 
         while True:
-            print(1)
+            # print(1)
             clock.tick(60)
 
             pre_q, pre_a, pre_q2, pre_a2 = imu_set.get_ipop()
@@ -89,12 +89,12 @@ if __name__ == '__main__':
 
 
             aM = a.mm(RMI2.t())
-            aM2 = a2.mm(RMI.t())
+            aM2 = a2.mm(RMI2.t())
 
 
-            _, tran, cj, grf, contact_check = net.forward_frame(pre_RMB2, aM, pre_RMB, aM2)
+            pip_pose, tran, cj, grf = net.forward_frame(pre_RMB2, aM, pre_RMB.view(1, 6, 3, 3), aM2.view(1, 6, 3))
 
-
+            contact_check = 0
 
             pose = torch.zeros(24, 3)
             joint_seq = [16, 18, 17, 19, 1, 4, 2, 5, 0, 9]
@@ -102,6 +102,9 @@ if __name__ == '__main__':
             for j, j_angle in enumerate(axis_rot):
                 pose[joint_seq[j]] = j_angle
 
+
+            tran = tran.view(-1, 3).view(-1).tolist()
+            print(tran)
 
 
             q = art.math.axis_angle_to_quaternion(pose)
@@ -122,7 +125,7 @@ if __name__ == '__main__':
                 frame_bone_data = {
                     "time": contact_check,
                     "name": "test",
-                    "position": p,
+                    "position": tran,
                     "rotation": rotation,
                     # "rotation": [bone[1].w, -bone[1].x, -bone[1].z, bone[1].y],
                     "acc": [0.0, 0.0, 0.0],
@@ -156,13 +159,13 @@ if __name__ == '__main__':
             # sock.sendto(data, (TARGET_IP, TARGET_PORT))
             # #
 
-            TARGET_PORT = 5006
+            # TARGET_PORT = 5006
             # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # sock.sendto(data2, (TARGET_IP, TARGET_PORT))
 
             TARGET_PORT = 5007
 
-            print(111)
+            # print(data)
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(data, (TARGET_IP, TARGET_PORT))
 

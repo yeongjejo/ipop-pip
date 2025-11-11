@@ -194,6 +194,6 @@ class PIP(torch.nn.Module):
         # return None, None, None, None, contact_check
         #
         # # # TODO: multiple people
-        return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], new_contect[0].cpu(), glb_acc.cpu(), False,
+        return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), False,
                                                       return_grf=True)
 

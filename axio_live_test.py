@@ -61,14 +61,20 @@ def tpose_calibration_ipop_2024(imu_set):
 
 
 if __name__ == '__main__':
+    print('실행 시작')
     AxioServer().start()
 
+    print('333')
 
     clock = Clock()
 
+    print('333')
     while True:
         if DataManager().axioStart is not True:
+            print('0000')
             continue
+
+        print('11111')
 
         imu_set = IMUSet()
         net = PIP()
@@ -104,8 +110,20 @@ if __name__ == '__main__':
 
 
             tran = tran.view(-1, 3).view(-1).tolist()
-            print(tran)
+            # pip_pose = art.math.rotation_matrix_to_axis_angle(pip_pose).view(-1, 72)
+            # tran = tran.view(-1, 3)
+            # s = ','.join(['%g' % v for v in pip_pose.view(-1)]) + '#' + \
+            #     ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
+            #     ','.join(['%d' % v for v in cj]) + '#' + \
+            #     (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
+            #
+            # # print("-----------------------------")
+            # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # # server_address = ('192.168.201.100', 5005)
+            # server_address = ('192.168.201.199', 8888)
+            # sock.sendto(s.encode('utf-8'), server_address)
 
+            pip_pose = art.math.rotation_matrix_to_axis_angle(pip_pose)
 
             q = art.math.axis_angle_to_quaternion(pose)
             # print(q)
@@ -168,6 +186,7 @@ if __name__ == '__main__':
             # print(data)
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(data, (TARGET_IP, TARGET_PORT))
+            print('전송완')
 
 
             i += 1

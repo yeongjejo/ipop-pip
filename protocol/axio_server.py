@@ -73,7 +73,7 @@ class AxioServer(threading.Thread):
                     # print(name, q)
 
                     # if SensorPart.WAIST == sensor_part:
-                    #     print(q)
+                    # print(q)
                     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
                 # print('-'*30)
 

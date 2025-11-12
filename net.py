@@ -123,17 +123,42 @@ class PIP(torch.nn.Module):
                  If return_grf is True, return (pose, translation, collision_joints, contact_forces).
         """
         imu = normalize_and_concat(glb_acc, glb_rot)
+        #
+        # x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
+        # x = self.rnn1.linear2(x[0])
+        # x = torch.cat([x, imu], dim=1)
+        #
+        # x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
+        # x = self.rnn2.linear2(x[0])
 
-        x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
-        x = self.rnn1.linear2(x[0])
-        x = torch.cat([x, imu], dim=1)
+        local_tran = None
+        pose_shape = torch.tensor([0.6944, 0.8920, 1.5287, 0.0873, 2.0649, -1.7349, 0.6130, -0.2062, 0.3559, -0.5673])
 
-        x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
-        x = self.rnn2.linear2(x[0])
+        joint_seq = [16, 18, 17, 19, 1, 4, 2, 5, 0, 9]
+        # joint_seq = [16, 18, 17, 19, 1, 4, 2, 5, 0, 9]
+        local_rot = art.math.rotation_matrix_to_axis_angle(ten_rot[8].t().matmul(ten_rot))
+        all_local_rot = torch.zeros(24, 3)
+        for j, j_angle in enumerate(local_rot):
+            if joint_seq[j] == 0:
+                continue
 
-        x = torch.cat([x, imu], dim=1)
+            all_local_rot[joint_seq[j]] = j_angle
+            # break
+        all_local_rot = art.math.axis_angle_to_rotation_matrix(all_local_rot)
+
+        _, jo, _ = self.pose_model.forward_kinematics(all_local_rot.unsqueeze(0), pose_shape, local_tran, calc_mesh=True)
+
+        init_pose = jo.squeeze(0).view(-1)[3:].unsqueeze(0)
+        # print(init_pose.shape)
+        # print(x.shape)
+        # print('-'*30)
+        x = torch.cat([init_pose, imu], dim=1)
+        # x = torch.cat([x, imu], dim=1)
         # x = torch.cat([test_pose, imu], dim=1)
         # print(x)
+
+
+
         x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0),
                                                self.rnn_states[2])
         global_6d_pose = self.rnn3.linear2(x1[0])
@@ -154,24 +179,6 @@ class PIP(torch.nn.Module):
 
         # pose = art.math.quaternion_to_rotation_matrix(torch.tensor(DataManager().premodel_output_q)* 1.0)
         # joint_velocity = torch.tensor(DataManager().premodel_output_vel)
-
-
-        local_tran = None
-        pose_shape = torch.tensor([0.6944, 0.8920, 1.5287, 0.0873, 2.0649, -1.7349, 0.6130, -0.2062, 0.3559, -0.5673])
-
-        joint_seq = [16, 18, 17, 19, 1, 4, 2, 5, 0, 9]
-        # joint_seq = [16, 18, 17, 19, 1, 4, 2, 5, 0, 9]
-        local_rot = art.math.rotation_matrix_to_axis_angle(ten_rot[8].t().matmul(ten_rot))
-        all_local_rot = torch.zeros(24, 3)
-        for j, j_angle in enumerate(local_rot):
-            if joint_seq[j] == 0:
-                continue
-
-            all_local_rot[joint_seq[j]] = j_angle
-            # break
-        all_local_rot = art.math.axis_angle_to_rotation_matrix(all_local_rot)
-
-        _, jo, _ = self.pose_model.forward_kinematics(all_local_rot.unsqueeze(0), pose_shape, local_tran, calc_mesh=True)
 
 
 

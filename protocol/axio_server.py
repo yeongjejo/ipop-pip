@@ -54,6 +54,7 @@ class AxioServer(threading.Thread):
                 json_data = json.loads(data.decode('utf-8'))
                 # 전체 데이터 반복
                 tpose_check = False
+                zero_check = False
                 for item in json_data:
                     name = item.get('name', 'Unknown')
                     part_num = 0
@@ -64,6 +65,7 @@ class AxioServer(threading.Thread):
                     acc = item.get('acc', [0, 0, 0])
                     rotation = item.get('rotation', [0, 0, 0, 0])
                     tpose_check = item.get('time')
+                    # print(tpose_check)
 
                     sensor_part = SensorPart(part_num)
                     q = Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
@@ -72,11 +74,16 @@ class AxioServer(threading.Thread):
                     g = Gyro(0.0, 0.0, 0.0)
                     # print(name, q)
 
-                    # if SensorPart.WAIST == sensor_part:
-                    # print(q)
+                    if SensorPart.WAIST == sensor_part and rotation[0] == 1.0:
+                        zero_check = True
+                        break
+                    # print(name, q)
                     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
                 # print('-'*30)
 
+                if zero_check:
+                    continue
+                # print(11111)
                 DataManager().setIpopIMUData()
                 DataManager().axioStart = True
                 DataManager().tpose_check = tpose_check

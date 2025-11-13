@@ -41,10 +41,10 @@ def tpose_calibration_ipop_2024(imu_set):
     RSI = imu_set.get_ipop()[0][5].view(3, 3).t()
 
     RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+    # RMI2 = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
+
+
     RMI2 = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
-
-
-    # RMI2 = torch.tensor([[0, -1, 0], [-1, 0, 0], [0, 0, 1.]]).mm(RSI)
 
     # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
     # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)
@@ -61,20 +61,16 @@ def tpose_calibration_ipop_2024(imu_set):
 
 
 if __name__ == '__main__':
-    print('실행 시작')
+    # print('실행 시작')
     AxioServer().start()
-
-    print('333')
-
     clock = Clock()
 
-    print('333')
     while True:
         if DataManager().axioStart is not True:
-            print('0000')
+            # print('0000')
             continue
 
-        print('11111')
+        # print('11111')
 
         imu_set = IMUSet()
         net = PIP()
@@ -83,19 +79,28 @@ if __name__ == '__main__':
 
 
         while True:
+            if DataManager().tpose_check:
+                break
             # print(1)
             clock.tick(60)
 
             pre_q, pre_a, pre_q2, pre_a2 = imu_set.get_ipop()
+            #
+            # pre_RMB = RMI.matmul(pre_q).matmul(RSB)
+            # pre_RMB2 = RMI.matmul(pre_q2).matmul(RSB2)
 
-            pre_RMB = RMI.matmul(pre_q).matmul(RSB)
-            pre_RMB2 = RMI.matmul(pre_q2).matmul(RSB2)
+            pre_RMB = pre_q
+            pre_RMB2 = pre_q2
+
             a = pre_a
             a2 = pre_a2
 
+            #
+            # aM = a.mm(RMI2.t())
+            # aM2 = a2.mm(RMI2.t())
 
-            aM = a.mm(RMI2.t())
-            aM2 = a2.mm(RMI2.t())
+            aM = a
+            aM2 = a2
 
 
             pip_pose, tran, cj, grf = net.forward_frame(pre_RMB2, aM, pre_RMB.view(1, 6, 3, 3), aM2.view(1, 6, 3))
@@ -110,6 +115,9 @@ if __name__ == '__main__':
 
 
             tran = tran.view(-1, 3).view(-1).tolist()
+            if np.isnan(tran[0]):
+                continue
+            # print(tran)
             # pip_pose = art.math.rotation_matrix_to_axis_angle(pip_pose).view(-1, 72)
             # tran = tran.view(-1, 3)
             # s = ','.join(['%g' % v for v in pip_pose.view(-1)]) + '#' + \
@@ -186,7 +194,7 @@ if __name__ == '__main__':
             # print(data)
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(data, (TARGET_IP, TARGET_PORT))
-            print('전송완')
+            # print('전송완')
 
 
             i += 1

@@ -81,6 +81,7 @@ if __name__ == '__main__':
 
 
             q = art.math.axis_angle_to_quaternion(pose)
+            # print(q)
             bone_seq = [0, 3, 6, 9, 12, 15, 13, 16, 18, 20, 14, 17, 19, 21, 1, 4, 7, 2, 5, 8]
 
             send_data = []

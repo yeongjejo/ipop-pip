@@ -197,7 +197,7 @@ class PhysicsOptimizer:
                 J = self.model.calc_point_Jacobian(q, joint_id)
                 v = self.model.calc_point_velocity(q, qdot, joint_id)
 
-                th = -np.log(min(stable, 0.64999) / 0.65)
+                th = -np.log(min(stable, 0.84999) / 0.85)
                 th_y = (self.params['floor_y'] - pos[1]) / self.params['delta_t']
                 Gs1.append(-self.params['delta_t'] * J)
                 hs1.append(v - [-th, th_y, -th])
@@ -233,6 +233,7 @@ class PhysicsOptimizer:
 
         if x is None or np.linalg.norm(x) > 10000:
             print('Warning: QP infeasible. Ignoring Gx <= h constraints')
+            print(acc)
             x = solve_qp(P_, q_, None, None, A_, b_, solver='quadprog', initvals=init)
 
         qddot = x[:self.model.qdot_size]

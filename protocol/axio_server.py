@@ -65,21 +65,51 @@ class AxioServer(threading.Thread):
                     acc = item.get('acc', [0, 0, 0])
                     rotation = item.get('rotation', [0, 0, 0, 0])
                     tpose_check = item.get('time')
+
+                    raw_rotation = item.get('sg_acc', [0, 0, 0])
+                    raw_w_rotation = item.get('left_force', [0, 0, 0])
+                    if tpose_check:
+                        break
                     # print(tpose_check)
 
                     sensor_part = SensorPart(part_num)
                     q = Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
                     a = Acc(acc[0], acc[1], acc[2])
-                    m = Mag(0.0, 0.0, 0.0)
+                    m = Quaternion(rotation[0], rotation[1], rotation[2], rotation[3])
                     g = Gyro(0.0, 0.0, 0.0)
-                    # print(name, q)
+                    # print(name, a.x, a.y, a.z)
 
                     if SensorPart.WAIST == sensor_part and rotation[0] == 1.0:
                         zero_check = True
                         break
-                    # print(name, q)
+
+                    # a = Acc(-a.y, a.z, a.x)
+                    print(name, acc)
+                    # if (SensorPart
+                    #         .BACK == sensor_part):
+                    #     a.z *= -1.0
+                    #     # print(name, a.x, a.y, a.z)
+                    # elif SensorPart.WAIST == sensor_part:
+                    #     a = Acc(-a.y, -a.x, a.z)
+                    #     # print(name, a.x, a.y, a.z)
+                    # elif SensorPart.RIGHT_UPPER_ARM == sensor_part or SensorPart.RIGHT_LOWER_ARM == sensor_part:
+                    #     a = Acc(-a.x, -a.z, a.y)
+                    #     # print(name, a.x, a.y, a.z)
+                    # elif SensorPart.LEFT_UPPER_ARM == sensor_part or SensorPart.LEFT_LOWER_ARM == sensor_part:
+                    #     a = Acc(a.x, -a.z, -a.y)
+                    #     # print(name, a.x, a.y, a.z)
+                    # elif SensorPart.RIGHT_UPPER_LEG == sensor_part or SensorPart.RIGHT_LOWER_LEG == sensor_part:
+                    #     a = Acc(a.z, -a.x, a.y)
+                    #     # print(name, a.x, a.y, a.z)
+                    # elif SensorPart.LEFT_UPPER_LEG == sensor_part or SensorPart.LEFT_LOWER_LEG == sensor_part:
+                    #     a = Acc(-a.z, -a.x, -a.y)
+                    #     # print(name, a.x, a.y, a.z)
+                    # a.x *= -1.0
+                    # a.y *= -1.0
+                    # a.z *= -1.0
                     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
-                # print('-'*30)
+                print('-'*30)
+
 
                 if zero_check:
                     continue

@@ -175,13 +175,22 @@ if __name__ == '__main__':
             # sock.sendto(data, (TARGET_IP, TARGET_PORT))
             # #
 
+
+
             TARGET_PORT = 5006
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.sendto(data2, (TARGET_IP, TARGET_PORT))
 
-            TARGET_PORT = 5007
+
+
+            with open("python_ip_port.txt", "r", encoding="utf-8") as f:
+                text = f.read()
+
+            TARGET_IP, TARGET_PORT = text.split(':')
+
+            # TARGET_PORT = 5007
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(data, (TARGET_IP, TARGET_PORT))
+            sock.sendto(data, (TARGET_IP, int(TARGET_PORT)))
 
 
             i += 1

@@ -53,7 +53,7 @@ class PIP(torch.nn.Module):
 
 
         self.pose_model = art.ParametricModel(paths.smpl_file)
-        self.new_contect_model = GRFRNN()
+        # self.new_contect_model = GRFRNN()
 
         self.ipop_contect = []
         self.pip_contect = []
@@ -123,7 +123,7 @@ class PIP(torch.nn.Module):
                  If return_grf is True, return (pose, translation, collision_joints, contact_forces).
         """
         imu = normalize_and_concat(glb_acc, glb_rot)
-        #
+        # #
         # x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
         # x = self.rnn1.linear2(x[0])
         # x = torch.cat([x, imu], dim=1)
@@ -182,7 +182,7 @@ class PIP(torch.nn.Module):
 
 
 
-        new_contect = self.new_contect_model.predict(ten_acc, ten_rot, jo.squeeze(0))
+        # new_contect = self.new_contect_model.predict(ten_acc, ten_rot, jo.squeeze(0))
 
 
 
@@ -201,6 +201,6 @@ class PIP(torch.nn.Module):
         # return None, None, None, None, contact_check
         #
         # # # TODO: multiple people
-        return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], new_contect[0].cpu(), glb_acc.cpu(), False,return_grf=True)
-        # return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), False,return_grf=True)
+        # return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], new_contect[0].cpu(), glb_acc.cpu(), False,return_grf=True)
+        return self.dynamics_optimizer.optimize_frame(pose, joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), False,return_grf=True)
 

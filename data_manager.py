@@ -18,7 +18,8 @@ class DataManager():
 
     # set_ip = "192.168.201.199"
     # set_ip = "192.168.0.15"
-    set_ip = "127.0.0.1"
+    # set_ip = "127.0.0.1"
+    set_ip = "192.168.215.117"
     
     time_setting = 0.005 # 플레이 시간
     
@@ -31,6 +32,7 @@ class DataManager():
 
     ipop_imu_acc = []
     ipop_imu_r = []
+    ipop_imu_raw_r = []
 
     premodel_imu_r = []
     premodel_imu_acc = []
@@ -117,6 +119,7 @@ class DataManager():
 
         frame_acc_sensor_data = [[],[],[],[],[],[]]
         frame_ori_sensor_data = [[],[],[],[],[],[]]
+        frame_raw_ori_sensor_data = [[],[],[],[],[],[]]
         frame_premodel_sensor_data = []
         frame_premodel_sensor_acc = []
         list_s = [0,1,2,3,5,4]
@@ -128,6 +131,7 @@ class DataManager():
                 if part in part_sequence:
                     frame_acc_sensor_data[list_s[cnt]] = [self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z]
                     frame_ori_sensor_data[list_s[cnt]] = self.__sensor_data[part][3].quaternion_to_rotation_matrix()
+                    frame_raw_ori_sensor_data[list_s[cnt]] = self.__sensor_data[part][2].quaternion_to_rotation_matrix()
                     cnt += 1
                     # frame_acc_sensor_data.append([self.__sensor_data[part][1].x, self.__sensor_data[part][1].y, self.__sensor_data[part][1].z])
                     # frame_ori_sensor_data.append(self.__sensor_data[part][3].quaternion_to_rotation_matrix())
@@ -147,5 +151,6 @@ class DataManager():
         # frame_ori_sensor_data[5] = empty_list
         self.ipop_imu_acc = frame_acc_sensor_data
         self.ipop_imu_r = torch.squeeze(torch.stack(frame_ori_sensor_data))
+        self.ipop_imu_raw_r = torch.squeeze(torch.stack(frame_raw_ori_sensor_data))
         self.premodel_imu_r = torch.squeeze(torch.stack(frame_premodel_sensor_data))
         self.premodel_imu_acc = frame_premodel_sensor_acc

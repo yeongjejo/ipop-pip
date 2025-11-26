@@ -55,8 +55,8 @@ class RNN(torch.nn.Module):
         x = self.linear2(pad_packed_sequence(x)[0])
         return [x[:l, i].clone() for i, l in enumerate(length)]
 
-    def load_w(self):
-        self.load_state_dict(torch.load('data/contact_weights_0.4883.pt'))
+    # def load_w(self):
+    #     self.load_state_dict(torch.load('data/contact_weights_0.4883.pt'))
 
 
 

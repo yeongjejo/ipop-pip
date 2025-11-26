@@ -54,7 +54,7 @@ class PIP(torch.nn.Module):
         self.max = 0.0
         self.min = 0.0
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model_folder = r'C:\Users\ipop1\OneDrive\바탕 화면\smplx'
         use_face_contour = False
         num_betas = 10

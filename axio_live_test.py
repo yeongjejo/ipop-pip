@@ -78,7 +78,6 @@ def tpose_calibration_ipop_2024(imu_set):
 
     RSI = imu_set.get_raw()[5].view(3, 3).t()
 
-
     # RMI2 = torch.tensor([[0, -1, 0], [-1, 0, 0], [0, 0, 1.]]).mm(RSI)
     # RMI2 = torch.tensor([[-1, 0, 0], [0, -1, 0], [0, 0, -1.]]).mm(RSI)
     # RMI2 = torch.tensor([[1, 0, 0], [0, 0, 1], [0, 0, 1.]]).mm(RSI)

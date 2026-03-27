@@ -49,13 +49,16 @@ class PhysicsOptimizer:
         self.q = None
         self.qdot = np.zeros(self.model.qdot_size)
 
+    # pose : 전체 관절 회전값 (ai 모델 아웃풋)
+    # jvel : 전체 관절 속도값 (ai 모델 아웃풋)
+    # contact : 왼발, 오른발 지면 접촉 확률  (ai 모델 아웃풋)
     def optimize_frame(self, pose, jvel, contact, acc, _, return_grf=False):
-        q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0]
-        v_ref = jvel.numpy()
-        c_ref = contact.sigmoid().numpy()
-        a_ref = acc.numpy()
-        q = self.q
-        qdot = self.qdot
+        q_ref = smpl_to_rbdl(pose, torch.zeros(3))[0] # 전체 관절 회전값
+        v_ref = jvel.numpy() # 전체 관절 속도값
+        c_ref = contact.sigmoid().numpy() # 양발 지면 접촉 확률
+        a_ref = acc.numpy() # 가속도 사용 x
+        q = self.q # 0~2 인덱스 허리 위치, 3~나머지 인덱스 전체 관절 회전값
+        qdot = self.qdot # q를 미분 한값
 
         if q is None:
             self.q = q_ref
@@ -65,6 +68,7 @@ class PhysicsOptimizer:
                 return pose, torch.zeros(3)
 
         # determine the contact joints and points
+        # 지면 접촉 관절 판별
         self.model.update_kinematics(q, qdot, np.zeros(self.model.qdot_size))
         Js = [np.empty((0, self.model.qdot_size))]
         collision_points, collision_joints = [], []
@@ -96,6 +100,7 @@ class PhysicsOptimizer:
         A_, b_ = None, None
 
         # joint angle PD controller
+        # 지면 접촉 관절 판별
         if True:
             A = np.hstack((np.zeros((self.model.qdot_size - 3, 3)), np.eye((self.model.qdot_size - 3))))
             b = self.params['kp_angular'] * art.math.angle_difference(q_ref[3:], q[3:]) - self.params['kd_angular'] * qdot[3:]

@@ -26,7 +26,8 @@ class AxioServer(threading.Thread):
     def run(self):
         # 수신할 IP와 포트 설정
         UDP_IP = "127.0.0.1"
-        UDP_PORT = 12345
+        # UDP_PORT = 12345
+        UDP_PORT = 12346
 
         # 소켓 생성
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -79,12 +80,14 @@ class AxioServer(threading.Thread):
                     g = Gyro(0.0, 0.0, 0.0)
                     # print(name, a.x, a.y, a.z)
 
+                    # print(name, ": ", q)
+
                     if SensorPart.WAIST == sensor_part and rotation[0] == 1.0:
                         zero_check = True
                         break
 
                     # a = Acc(-a.y, a.z, a.x)
-                    print(name, acc)
+                    # print(name, acc)
                     # if (SensorPart
                     #         .BACK == sensor_part):
                     #     a.z *= -1.0
@@ -108,7 +111,7 @@ class AxioServer(threading.Thread):
                     # a.y *= -1.0
                     # a.z *= -1.0
                     DataManager().sensor_data = [sensor_part, [g, a, m, q]]
-                print('-'*30)
+                # print('-'*30)
 
 
                 if zero_check:

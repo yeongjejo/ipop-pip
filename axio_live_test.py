@@ -76,17 +76,21 @@ def tpose_calibration_ipop_2024(imu_set):
     RMI = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
     # RMI2 = torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1.]]).mm(RSI)
 
-    RSI = imu_set.get_raw()[5].view(3, 3).t()
+    # part_sequence = [SensorPart.LEFT_LOWER_ARM, SensorPart.RIGHT_LOWER_ARM, SensorPart.LEFT_LOWER_LEG,
+    #                  SensorPart.RIGHT_LOWER_LEG, SensorPart.BACK, SensorPart.WAIST]
+    # y, -x, z
 
-    # RMI2 = torch.tensor([[0, -1, 0], [-1, 0, 0], [0, 0, 1.]]).mm(RSI)
-    # RMI2 = torch.tensor([[-1, 0, 0], [0, -1, 0], [0, 0, -1.]]).mm(RSI)
-    # RMI2 = torch.tensor([[1, 0, 0], [0, 0, 1], [0, 0, 1.]]).mm(RSI)
-    RMI2 = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-    # RMI2 = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
+    RSI = imu_set.get_raw()
+    RMI5 = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI[5].view(3, 3).t()) # 허리
+    RMI4 = torch.tensor([[-1, 0, 0], [0, 0, 1], [0, 1, 0.]]).mm(RSI[4].view(3, 3).t()) # 가슴(머리)
+    RMI3 = torch.tensor([[-1, 0, 0], [0, 0, -1], [0, 1, 0.]]).mm(RSI[3].view(3, 3).t()) # 오른발
+    RMI2 = torch.tensor([[1, 0, 0], [0, 0, -1], [0, -1, 0.]]).mm(RSI[2].view(3, 3).t()) # 왼발
+    RMI1 = torch.tensor([[1, 0, 0], [0, 0, 1], [0, -1, 0.]]).mm(RSI[1].view(3, 3).t()) # 오른팔
+    RMI0 = torch.tensor([[-1, 0, 0], [0, 0, 1], [0, 1, 0.]]).mm(RSI[0].view(3, 3).t()) # 왼팔
 
-    # RMI = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI)
-    # RMI = torch.tensor([[-1, 0, 0], [0, 1, 0], [0, 0, -1.]]).mm(RSI)
-    # RMI2 = torch.tensor([[1, 0, 0], [0, -1, 0], [0, 0, 1.]]).mm(RSI)
+    
+    # RMI2 = torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0.]]).mm(RSI[5].view(3, 3).t()) # 허리
+
     RIS, _, RIS2, _ = imu_set.get_ipop()
 
 
@@ -94,7 +98,7 @@ def tpose_calibration_ipop_2024(imu_set):
     RSB2 = RMI.matmul(RIS2).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
     # RSB_hand = RMI.matmul(handRIS).transpose(1, 2).matmul(torch.eye(3))  # [6, 3, 3]
 
-    return RMI, RSB, RMI2, RSB2
+    return RMI, RSB, [RMI0, RMI1, RMI2, RMI3, RMI4, RMI5], RSB2
 
 
 
@@ -145,8 +149,16 @@ if __name__ == '__main__':
             a2 = pre_a2
 
             #
-            aM = a.mm(RMI2.t())
-            aM2 = a2.mm(RMI2.t())
+            aM = a.mm(RMI2[5].t())
+
+
+            for ind, rm in enumerate(RMI2):
+                a2[ind].matmul(rm.t())
+            aM2 = a2
+
+            # a2.mm(RMI2.t())
+
+
 
             # aM = a
             # aM2 = a2

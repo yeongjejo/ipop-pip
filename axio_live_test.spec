@@ -38,23 +38,45 @@ a = Analysis(
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
+
     pyz,
+
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
+
     [],
+
+    exclude_binaries=True,   # 🔹 이 부분이 onedir용 포인트
+
     name='axio_live_test',
+
     debug=False,
+
     bootloader_ignore_signals=False,
+
     strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
+
+    upx=False,               # 🔹 우선 False 권장
+
     console=True,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
+
+)
+
+
+
+coll = COLLECT(
+
+    exe,
+
+    a.binaries,
+
+    a.zipfiles,
+
+    a.datas,
+
+    strip=False,
+
+    upx=False,
+
+    name='axio_live_test'
+
 )
